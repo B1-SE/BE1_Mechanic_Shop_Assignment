@@ -3,7 +3,7 @@ Service Ticket model for the mechanic shop application.
 """
 
 from app.extensions import db
-from . import service_mechanics
+from . import service_mechanics, service_inventory
 
 
 class ServiceTicket(db.Model):
@@ -20,6 +20,10 @@ class ServiceTicket(db.Model):
     mechanics = db.relationship('Mechanic', 
                               secondary=service_mechanics, 
                               back_populates='service_tickets')
+    
+    inventory_parts = db.relationship('Inventory', 
+                                    secondary=service_inventory, 
+                                    back_populates='service_tickets')
 
     def __repr__(self):
         return f"<ServiceTicket {self.id}: {self.description[:50]}>"
