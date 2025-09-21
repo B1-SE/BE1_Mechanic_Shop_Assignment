@@ -179,9 +179,8 @@ def register_blueprints(app):
     except ImportError as e:
         print(f"Warning: Could not import service_tickets blueprint: {e}")
     
-    # Create members blueprint as alias to customers - FIXED parameter handling
+    # Create members blueprint as alias to customers
     try:
-        from flask import request
         members_bp = Blueprint('members', __name__)
         
         # Register members routes that delegate to customers
@@ -202,19 +201,13 @@ def register_blueprints(app):
         
         @members_bp.route('/<int:member_id>', methods=['PUT'])
         def update_member(member_id):
-            # Import the view function directly and call it properly
-            from app.routes.customers import customers_bp
-            # Get the actual view function from the customers blueprint
-            view_func = customers_bp.view_functions['update_customer']
-            return view_func(member_id)
+            from app.routes.customers import update_customer
+            return update_customer(member_id)
         
         @members_bp.route('/<int:member_id>', methods=['DELETE'])
         def delete_member(member_id):
-            # Import the view function directly and call it properly
-            from app.routes.customers import customers_bp
-            # Get the actual view function from the customers blueprint
-            view_func = customers_bp.view_functions['delete_customer']
-            return view_func(member_id)
+            from app.routes.customers import delete_customer
+            return delete_customer(member_id)
         
         @members_bp.route('/login', methods=['POST'])
         def member_login():

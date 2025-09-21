@@ -1,0 +1,59 @@
+# .github/workflows/main.yaml
+
+name: Basic CI - Test and Lint
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Run tests on a recent, stable version of Python
+        python-version: [3.11]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-dev.txt
+
+    - name: Run linters and formatters
+      run: |
+        flake8 app/ tests/ --max-line-length=88 --extend-ignore=E203,W503
+        black --check app/ tests/
+        isort --check-only app/ tests/
+
+    - name: Run security checks
+      run: |
+        bandit -r app/
+        safety check
+
+    - name: Run tests
+      run: |
+        pytest tests/ \
+          --cov=app \
+          --cov-report=term-missing \
+          --cov-fail-under=95 \
+          -v
