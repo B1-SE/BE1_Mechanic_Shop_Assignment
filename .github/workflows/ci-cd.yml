@@ -1,0 +1,257 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9, 3.10, 3.11, 3.12]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ \
+            --cov=app \
+            --cov-report=xml \
+            --cov-report=html \
+            --cov-report=term-missing \
+            --html=reports/report.html \
+            --self-contained-html \
+            --junitxml=reports/junit.xml \
+            -v \
+            --cov-fail-under=95
+
+      - name: Performance tests
+        if: matrix.python-version == '3.11'
+        run: |
+          python -m pytest tests/ -k "performance" --durations=10
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.python-version }}
+          path: reports/
+
+  lint-and-security:
+    name: Linting & Security
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+      - name: Install dependencies
+        run: |
+          pip install -r requirements-dev.txt
+      - name: Run linting
+        run: |
+          flake8 app/ tests/ --max-line-length=88 --extend-ignore=E203,W503
+          black --check app/ tests/
+          isort --check-only app/ tests/
+      - name: Run security checks
+        run: |
+          bandit -r app/
+          safety check
+
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: [test, lint-and-security]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME_BE }}
+          password: ${{ secrets.DOCKERHUB_TOKEN_BE }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME_BE }}/mechanic-shop:latest
+            ${{ secrets.DOCKERHUB_USERNAME_BE }}/mechanic-shop:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: staging
+      url: https://staging.mechanicshop.com
+    if: github.ref == 'refs/heads/develop'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to staging
+        run: |
+          echo "Deploying to staging environment..."
+          echo "Branch: ${{ github.ref }}"
+          echo "Commit: ${{ github.sha }}"
+          # Add your actual deployment commands here
+          # Example: kubectl apply -f k8s/staging/
+          # Example: aws ecs update-service --cluster staging --service mechanic-shop
+
+      - name: Run integration tests
+        run: |
+          echo "Running integration tests against staging..."
+          # Example: curl -f https://staging.mechanicshop.com/health
+          # Example: npm run test:integration -- --baseUrl=https://staging.mechanicshop.com
+
+      - name: Health check
+        run: |
+          echo "Running health checks on staging..."
+          # Example health check commands:
+          # curl -f https://staging.mechanicshop.com/health || exit 1
+          # python scripts/health_check.py --env=staging
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: production
+      url: https://mechanicshop.com
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to production
+        run: |
+          echo "Deploying to production environment..."
+          echo "Branch: ${{ github.ref }}"
+          echo "Commit: ${{ github.sha }}"
+          # Add your actual production deployment commands here
+          # Example: kubectl apply -f k8s/production/
+          # Example: aws ecs update-service --cluster production --service mechanic-shop
+
+      - name: Health check
+        run: |
+          echo "Running health checks on production..."
+          # Example: curl -f https://mechanicshop.com/health || exit 1
+          # Example: python scripts/health_check.py --env=production
+
+      - name: Notify team
+        if: success()
+        run: |
+          echo "Production deployment successful!"
+          echo "Deployed commit: ${{ github.sha }}"
+          echo "Deployed by: ${{ github.actor }}"
+          # Add notification logic:
+          # curl -X POST -H 'Content-type: application/json' \
+          #   --data '{"text":"🚀 Production deployment successful!"}' \
+          #   ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  deploy:
+    name: Deploy to Render
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Trigger Render Deployment
+        run: |
+          curl --request POST \
+            --url https://api.render.com/v1/services/${{ secrets.SERVICE_ID }}/deploys \
+            --header 'Accept: application/json' \
+            --header 'Authorization: Bearer ${{ secrets.RENDER_API_KEY }}' \
+            --header 'Content-Type: application/json' \
+            --data '{"clearCache": "no"}'
+      - name: Notify team of Render deployment
+        if: success()
+        run: |
+          echo "🚀 Render deployment for commit ${{ github.sha }} triggered successfully!"
+
+  deploy-render:
+    name: Deploy to Render
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Trigger Render Deployment
+        run: |
+          curl --request POST \
+            --url https://api.render.com/v1/services/${{ secrets.SERVICE_ID }}/deploys \
+            --header 'Accept: application/json' \
+            --header 'Authorization: Bearer ${{ secrets.RENDER_API_KEY }}' \
+            --header 'Content-Type: application/json' \
+            --data '{"clearCache": "no"}'
+      - name: Notify team of Render deployment
+        if: success()
+        run: |
+          echo "🚀 Render deployment for commit ${{ github.sha }} triggered successfully!"
+
+  rollback:
+    name: Rollback Production
+    runs-on: ubuntu-latest
+    environment:
+        name: production
+    if: failure() && github.ref == 'refs/heads/main'
+    needs: deploy-production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rollback deployment
+        run: |
+          echo "Rolling back production deployment..."
+          echo "Failed commit: ${{ github.sha }}"
+          # Add rollback commands here:
+          # kubectl rollout undo deployment/mechanic-shop -n production
+          # aws ecs update-service --cluster production --service mechanic-shop --task-definition previous-version
+
+      - name: Notify team of rollback
+        run: |
+          echo "Production rollback initiated!"
+          echo "Failed commit: ${{ github.sha }}"
+          # Add notification logic:
+          # curl -X POST -H 'Content-type: application/json' \
+          #   --data '{"text":"⚠️ Production rollback initiated due to deployment failure"}' \
+          #   ${{ secrets.SLACK_WEBHOOK_URL }}

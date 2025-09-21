@@ -3,6 +3,7 @@ Authentication utilities for the mechanic shop application.
 """
 
 import jwt
+import os
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from flask import request, jsonify, current_app
@@ -18,8 +19,8 @@ def generate_token(customer_id, email):
         'iat': datetime.now(timezone.utc)
     }
     
-    # Use a simple secret key (in production, use app.config['SECRET_KEY'])
-    secret_key = current_app.config.get('SECRET_KEY', 'dev-secret-key')
+    # Use the application's configured secret key
+    secret_key = os.environ.get('SECRET_KEY') or 'super secret secrets'
     token = jwt.encode(payload, secret_key, algorithm='HS256')
     return token
 
@@ -27,7 +28,7 @@ def generate_token(customer_id, email):
 def verify_token(token):
     """Verify and decode a JWT token"""
     try:
-        secret_key = current_app.config.get('SECRET_KEY', 'dev-secret-key')
+        secret_key = os.environ.get('SECRET_KEY') or 'super secret secrets'
         payload = jwt.decode(token, secret_key, algorithms=['HS256'])
         return payload
     except jwt.ExpiredSignatureError:

@@ -3,7 +3,7 @@ from flask import request, jsonify
 from marshmallow import ValidationError
 from app.models import Inventory
 from app.extensions import db, cache
-from app.utils.auth import token_required
+from app.utils.util import token_required
 from . import inventory_bp
 from .schemas import InventorySchema
 

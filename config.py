@@ -43,8 +43,7 @@ class ProductionConfig(Config):
     """Production configuration."""
     
     DEBUG = False
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        f'sqlite:///{BASE_DIR}/instance/mechanic_shop.db'
+    SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI')
 
 
 # Configuration dictionary

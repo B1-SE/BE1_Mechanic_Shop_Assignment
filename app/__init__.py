@@ -86,10 +86,17 @@ def setup_swagger(app):
         from flask_swagger import swagger
         from flask_swagger_ui import get_swaggerui_blueprint
         
+        # Dynamically set host and schemes for Swagger
+        host = "localhost:5000"
+        schemes = ["http"]
+        if not app.config.get('DEBUG', False):
+            host = "mechanic-shop.onrender.com"  # Replace with your actual Render domain
+            schemes = ["https"]
+
         # Swagger configuration
         @app.route("/spec")
         def spec():
-            return swagger(app, template={
+            swag = swagger(app, template={
                 "swagger": "2.0",
                 "info": {
                     "title": "Mechanic Shop Management API",
@@ -100,9 +107,9 @@ def setup_swagger(app):
                         "email": "support@mechanicshop.com"
                     }
                 },
-                "host": "localhost:5000",
+                "host": host,
                 "basePath": "/",
-                "schemes": ["http", "https"],
+                "schemes": schemes,
                 "securityDefinitions": {
                     "Bearer": {
                         "type": "apiKey",
@@ -120,6 +127,7 @@ def setup_swagger(app):
                     {"name": "calculations", "description": "Mathematical calculation operations"}
                 ]
             })
+            return jsonify(swag)
         
         # Swagger UI configuration
         SWAGGER_URL = '/docs'
