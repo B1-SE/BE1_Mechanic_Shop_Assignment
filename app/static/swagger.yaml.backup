@@ -1,0 +1,2192 @@
+swagger: '2.0'
+info:
+  title: "Mechanic Shop API"
+  description: "Complete API for mechanic shop management with inventory tracking, JWT authentication, rate limiting, and caching"
+  version: "1.0.0"
+  contact:
+    name: "Mechanic Shop API Support"
+    email: "support@mechanicshop.com"
+host: "127.0.0.1:5000"
+schemes:
+  - "http"
+consumes:
+  - "application/json"
+produces:
+  - "application/json"
+
+securityDefinitions:
+  Bearer:
+    type: apiKey
+    name: Authorization
+    in: header
+    description: |
+      JWT Authorization header using the Bearer scheme.
+      
+      **Format:** `Bearer {jwt_token}`
+      
+      **Example:** `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
+      
+      **How to obtain token:**
+      1. Make a POST request to `/login` with valid credentials
+      2. Copy the `access_token` from the response
+      3. Add it to the Authorization header as `Bearer {access_token}`
+      
+      **Token contains:**
+      - User identity and role information
+      - Expiration time (typically 24 hours)
+      - Permissions and access level
+      
+      **Usage:**
+      - Include this header in requests to protected endpoints
+      - Token will be validated on each request
+      - Expired tokens will return 401 Unauthorized
+  
+  JWTAuth:
+    type: apiKey
+    name: Authorization
+    in: header
+    description: |
+      JSON Web Token (JWT) authentication for API access.
+      
+      **Authentication Flow:**
+      1. **Login:** POST credentials to `/login` endpoint
+      2. **Token:** Receive JWT access token in response
+      3. **Header:** Include token in Authorization header
+      4. **Access:** Make authenticated requests to protected resources
+      
+      **Token Security:**
+      - Cryptographically signed for integrity
+      - Contains encoded user claims and permissions
+      - Automatically expires for security (configurable TTL)
+      - Stateless - no server-side session storage required
+      
+      **Error Responses:**
+      - `401 Unauthorized`: Missing, invalid, or expired token
+      - `403 Forbidden`: Valid token but insufficient permissions
+
+paths:
+  /:
+    get:
+      tags:
+        - "General"
+      summary: "Get API information"
+      description: "Returns general information about the API and available endpoints"
+      responses:
+        200:
+          description: "API information retrieved successfully"
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Welcome to the Mechanic Shop API"
+              version:
+                type: string
+                example: "1.0.0"
+              endpoints:
+                type: object
+
+  /health:
+    get:
+      tags:
+        - "General"
+      summary: "Health check"
+      description: "Check if the API is running and healthy"
+      responses:
+        200:
+          description: "API is healthy"
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "healthy"
+              message:
+                type: string
+                example: "Mechanic Shop API is running"
+
+  /login:
+    post:
+      tags:
+        - "Authentication"
+      summary: "User authentication and token generation"
+      description: |
+        Universal login endpoint for all user types (customers, mechanics, admin).
+        Authenticates user credentials and generates JWT token for API access.
+        
+        **Purpose:**
+        - Central authentication endpoint
+        - Token generation for protected resource access
+        - Standardized login process across user types
+        
+        **Security Features:**
+        - JWT token with 24-hour expiration
+        - Secure password validation
+        - Rate limiting protection
+        
+        **Usage:**
+        1. Send credentials to this endpoint
+        2. Receive JWT token in response
+        3. Include token in Authorization header for protected endpoints
+        4. Format: `Authorization: Bearer <token>`
+      operationId: "generateToken"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: body
+          name: credentials
+          description: "User login credentials for token generation"
+          required: true
+          schema:
+            $ref: "#/definitions/LoginCredentials"
+      responses:
+        200:
+          description: "Authentication successful - Token generated"
+          schema:
+            $ref: "#/definitions/LoginResponse"
+          examples:
+            application/json:
+              token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+              message: "Authentication successful"
+              status: "success"
+              user:
+                id: 1
+                email: "user@example.com"
+                type: "customer"
+              timestamp: "2024-12-24T10:30:00Z"
+        400:
+          description: "Bad request - Invalid credentials format"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: "Invalid request"
+              message: "Email and password are required"
+              timestamp: "2024-12-24T10:30:00Z"
+        401:
+          description: "Unauthorized - Invalid credentials"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: "Authentication failed"
+              message: "Invalid email or password"
+              timestamp: "2024-12-24T10:30:00Z"
+        422:
+          description: "Unprocessable entity - Validation failed"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: "Validation error"
+              message: "Invalid email format"
+              timestamp: "2024-12-24T10:30:00Z"
+        429:
+          description: "Too many requests - Rate limit exceeded"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: "Rate limit exceeded"
+              message: "Too many login attempts. Please try again later"
+              timestamp: "2024-12-24T10:30:00Z"
+
+  /test-rate-limit:
+    get:
+      tags:
+        - "General"
+      summary: "Test rate limiting"
+      description: "Test endpoint to demonstrate rate limiting (5 requests per minute)"
+      responses:
+        200:
+          description: "Rate limiting is working"
+        429:
+          description: "Rate limit exceeded"
+
+  /customers/login:
+    post:
+      tags:
+        - "Authentication"
+      summary: "Customer login"
+      description: |
+        Authenticate a customer using email and password credentials. 
+        Returns a JWT token for accessing protected endpoints.
+        
+        **Process:**
+        1. Validates email format and password
+        2. Checks credentials against database
+        3. Generates JWT token with customer information
+        4. Returns token and customer details
+        
+        **Security:** 
+        - Password is validated securely
+        - JWT token expires in 24 hours
+        - No rate limiting applied to login endpoint
+      operationId: "customerLogin"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: body
+          name: credentials
+          description: "Customer login credentials (email and password)"
+          required: true
+          schema:
+            $ref: "#/definitions/LoginCredentials"
+      responses:
+        200:
+          description: "Authentication successful - JWT token generated"
+          schema:
+            $ref: "#/definitions/LoginResponse"
+          examples:
+            application/json:
+              message: "Login successful"
+              token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+              customer:
+                id: 1
+                first_name: "John"
+                last_name: "Doe"
+                email: "john.doe@test.com"
+                phone_number: "555-1234"
+        400:
+          description: "Bad request - Invalid input format"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: "Validation failed"
+              message: "Invalid email format"
+        401:
+          description: "Authentication failed - Invalid credentials"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: "Authentication failed"
+              message: "Invalid email or password"
+        422:
+          description: "Unprocessable entity - Missing required fields"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: "Missing required fields"
+              message: "Email and password are required"
+
+  /customers/:
+    get:
+      tags:
+        - "Customers"
+      summary: "Get all customers"
+      description: "Get all customers with pagination, sorting, and filtering"
+      parameters:
+        - in: query
+          name: page
+          type: integer
+          description: "Page number"
+          default: 1
+        - in: query
+          name: per_page
+          type: integer
+          description: "Items per page (max 100)"
+          default: 10
+        - in: query
+          name: sort_by
+          type: string
+          description: "Sort field"
+          enum: ["id", "first_name", "last_name", "email"]
+        - in: query
+          name: order
+          type: string
+          description: "Sort order"
+          enum: ["asc", "desc"]
+        - in: query
+          name: search
+          type: string
+          description: "Search term for name or email"
+        - in: query
+          name: email
+          type: string
+          description: "Filter by email"
+      responses:
+        200:
+          description: "Customers retrieved successfully"
+    post:
+      tags:
+        - "Customers"
+      summary: "Create customer"
+      description: "Create a new customer (Rate Limited: 5 per minute)"
+      parameters:
+        - in: body
+          name: customer
+          required: true
+          schema:
+            $ref: "#/definitions/CustomerCreate"
+      responses:
+        201:
+          description: "Customer created successfully"
+        400:
+          description: "Validation error"
+        429:
+          description: "Rate limit exceeded"
+
+  /customers/{id}:
+    get:
+      tags:
+        - "Customers"
+      summary: "Get customer by ID"
+      parameters:
+        - in: path
+          name: id
+          type: integer
+          required: true
+      responses:
+        200:
+          description: "Customer retrieved successfully"
+        404:
+          description: "Customer not found"
+    put:
+      tags:
+        - "Customers"
+      summary: "Update customer"
+      security:
+        - Bearer: []
+      parameters:
+        - in: path
+          name: id
+          type: integer
+          required: true
+        - in: body
+          name: customer
+          schema:
+            $ref: "#/definitions/CustomerUpdate"
+      responses:
+        200:
+          description: "Customer updated successfully"
+        403:
+          description: "Unauthorized"
+        404:
+          description: "Customer not found"
+
+  /members:
+    post:
+      tags:
+        - "Members"
+      summary: "Create new member"
+      description: |
+        Create a new member in the system with comprehensive profile information.
+        
+        **Purpose:**
+        - Register new members with complete profile data
+        - Establish member identity and contact information
+        - Set up membership preferences and settings
+        - Create initial account with secure credentials
+        
+        **Features:**
+        - Input validation for all required fields
+        - Email uniqueness verification
+        - Password security requirements
+        - Membership type classification
+        - Contact information management
+        
+        **Process:**
+        1. Validate input payload structure
+        2. Check email availability
+        3. Encrypt password securely
+        4. Create member record in database
+        5. Return member details with unique ID
+        
+        **Rate Limiting:** 3 requests per minute per IP
+      operationId: "createMember"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: body
+          name: memberData
+          description: "Complete member information for account creation"
+          required: true
+          schema:
+            $ref: "#/definitions/CreateMemberPayload"
+      security:
+        - Bearer: []
+        - JWTAuth: []
+      responses:
+        201:
+          description: "Member created successfully"
+          schema:
+            $ref: "#/definitions/CreateMemberResponse"
+          examples:
+            application/json:
+              message: "Member created successfully"
+              status: "success"
+              member:
+                id: 123
+                first_name: "John"
+                last_name: "Doe"
+                email: "john.doe@example.com"
+                phone_number: "555-0123"
+                membership_type: "premium"
+                join_date: "2024-12-24"
+                is_active: true
+              timestamp: "2024-12-24T10:30:00Z"
+        400:
+          description: "Bad request - Invalid input data"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: "Validation failed"
+              message: "Invalid email format provided"
+              timestamp: "2024-12-24T10:30:00Z"
+        409:
+          description: "Conflict - Email already exists"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: "Duplicate entry"
+              message: "Member with this email already exists"
+              timestamp: "2024-12-24T10:30:00Z"
+        422:
+          description: "Unprocessable entity - Missing required fields"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: "Missing required fields"
+              message: "First name, last name, and email are required"
+              timestamp: "2024-12-24T10:30:00Z"
+        429:
+          description: "Too many requests - Rate limit exceeded"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: "Rate limit exceeded"
+              message: "Maximum 3 member creation requests per minute"
+              timestamp: "2024-12-24T10:30:00Z"
+    get:
+      tags:
+        - "Members"
+      summary: "Get all members"
+      description: "Retrieve a list of all members in the system"
+      security:
+        - Bearer: []
+        - JWTAuth: []
+      responses:
+        200:
+          description: "Successfully retrieved all members"
+          schema:
+            $ref: "#/definitions/AllMembers"
+
+  /members/{id}:
+    get:
+      tags:
+        - "Members"
+      summary: "Get member by ID"
+      description: |
+        Retrieve detailed information about a specific member by their unique ID.
+        
+        **Purpose:**
+        - Get complete member profile
+        - View membership details and status
+        - Access member history and preferences
+        
+        **Security:** Basic member info accessible, sensitive data requires authentication
+      operationId: "getMemberById"
+      produces:
+        - "application/json"
+      security:
+        - Bearer: []
+        - JWTAuth: []
+      parameters:
+        - in: path
+          name: id
+          type: integer
+          required: true
+          description: "Unique member ID"
+          minimum: 1
+      responses:
+        200:
+          description: "Member retrieved successfully"
+          schema:
+            $ref: "#/definitions/Member"
+          examples:
+            application/json:
+              id: 123
+              first_name: "John"
+              last_name: "Doe"
+              email: "john.doe@example.com"
+              membership_type: "premium"
+              join_date: "2024-12-24"
+              is_active: true
+              member_number: "MEM-2024-000123"
+        404:
+          description: "Member not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: "Member not found"
+              message: "No member found with ID 123"
+              timestamp: "2024-12-24T10:30:00Z"
+    put:
+      tags:
+        - "Members"
+      summary: "Update member"
+      description: |
+        Update member information and preferences with comprehensive validation.
+        
+        **Purpose:**
+        - Update member profile information selectively
+        - Change membership type and billing preferences
+        - Modify contact information and address
+        - Update account preferences and settings
+        - Maintain audit trail of changes
+        
+        **Features:**
+        - Partial updates (only send fields to change)
+        - Input validation for all fields
+        - Email uniqueness verification (if email updated)
+        - Password encryption (if password updated)
+        - Membership type validation
+        - Preference management
+        
+        **Security:** 
+        - Requires valid JWT authentication
+        - Members can update own profile
+        - Admin/Manager can update any member
+        - Sensitive operations require elevated permissions
+        
+        **Process:**
+        1. Validate JWT token and member permissions
+        2. Verify member exists and is accessible
+        3. Validate input payload structure
+        4. Check email availability (if email changed)
+        5. Encrypt new password securely (if provided)
+        6. Update member record with changes
+        7. Return updated member details
+        
+        **Rate Limiting:** 5 updates per minute per member
+        **Audit:** All updates are logged for security
+      operationId: "updateMember"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      security:
+        - Bearer: []
+      parameters:
+        - in: path
+          name: id
+          type: integer
+          required: true
+          description: "Unique member ID to update"
+          minimum: 1
+        - in: body
+          name: memberUpdate
+          description: |
+            Member information to update. Only include fields you want to change.
+            
+            **Partial Updates Supported:**
+            - Send only the fields you want to update
+            - Omitted fields will remain unchanged
+            - Empty/null values will be ignored
+            
+            **Field Validation:**
+            - Email must be unique across all members
+            - Password must meet security requirements (8+ chars)
+            - Membership type must be valid enum value
+            - Phone number format validation applied
+            
+            **Security Notes:**
+            - New passwords are automatically encrypted
+            - Sensitive fields require elevated permissions
+            - All changes are audit logged
+          required: true
+          schema:
+            $ref: "#/definitions/UpdateMemberPayload"
+      responses:
+        200:
+          description: "Member updated successfully"
+          schema:
+            $ref: "#/definitions/UpdateMemberResponse"
+          examples:
+            application/json:
+              message: "Member updated successfully"
+              status: "success"
+              member:
+                id: 123
+                first_name: "Jane"
+                last_name: "Smith"
+                email: "jane.smith@example.com"
+                phone_number: "555-9876"
+                membership_type: "gold"
+                join_date: "2024-12-24"
+                last_updated: "2024-12-25T14:30:00Z"
+                is_active: true
+                member_number: "MEM-2024-000123"
+              timestamp: "2024-12-25T14:30:00Z"
+        400:
+          description: "Bad request - Invalid update data"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: "Validation failed"
+              message: "Email format is invalid"
+              timestamp: "2024-12-25T14:30:00Z"
+        401:
+          description: "Unauthorized - Authentication required"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: "Authentication required"
+              message: "Valid JWT token required to update member"
+              timestamp: "2024-12-25T14:30:00Z"
+        403:
+          description: "Forbidden - Cannot update this member"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: "Access denied"
+              message: "You do not have permission to update this member"
+              timestamp: "2024-12-25T14:30:00Z"
+        404:
+          description: "Member not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        429:
+          description: "Too many requests - Rate limit exceeded"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+    delete:
+      tags:
+        - "Members"
+      summary: "Delete member"
+      description: |
+        Permanently delete a member account and all associated data.
+        
+        **Purpose:**
+        - Remove member from system
+        - Delete all member-related data
+        - Handle account closure requests
+        
+        **Security:** Requires admin authentication
+        **Warning:** This action is irreversible
+      operationId: "deleteMember"
+      produces:
+        - "application/json"
+      security:
+        - Bearer: []
+      parameters:
+        - in: path
+          name: id
+          type: integer
+          required: true
+          description: "Unique member ID to delete"
+          minimum: 1
+      responses:
+        200:
+          description: "Member deleted successfully"
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Member deleted successfully"
+              deleted_member_id:
+                type: integer
+                example: 123
+              timestamp:
+                type: string
+                format: date-time
+                example: "2024-12-24T10:30:00Z"
+        401:
+          description: "Unauthorized - Admin authentication required"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        403:
+          description: "Forbidden - Insufficient permissions"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        404:
+          description: "Member not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /mechanics/:
+    get:
+      tags:
+        - "Mechanics"
+      summary: "Get all mechanics"
+      description: "Get all mechanics (Cached for 10 minutes)"
+      responses:
+        200:
+          description: "Mechanics retrieved successfully"
+    post:
+      tags:
+        - "Mechanics"
+      summary: "Create mechanic"
+      description: "Create a new mechanic (Rate Limited: 10 per minute, Requires JWT)"
+      security:
+        - Bearer: []
+      parameters:
+        - in: body
+          name: mechanic
+          required: true
+          schema:
+            $ref: "#/definitions/MechanicCreate"
+      responses:
+        201:
+          description: "Mechanic created successfully"
+        400:
+          description: "Validation error"
+        401:
+          description: "Unauthorized"
+        429:
+          description: "Rate limit exceeded"
+
+  /mechanics/{id}:
+    get:
+      tags:
+        - "Mechanics"
+      summary: "Get mechanic by ID"
+      parameters:
+        - in: path
+          name: id
+          type: integer
+          required: true
+      responses:
+        200:
+          description: "Mechanic retrieved successfully"
+        404:
+          description: "Mechanic not found"
+    put:
+      tags:
+        - "Mechanics"
+      summary: "Update mechanic"
+      security:
+        - Bearer: []
+      parameters:
+        - in: path
+          name: id
+          type: integer
+          required: true
+        - in: body
+          name: mechanic
+          schema:
+            $ref: "#/definitions/MechanicUpdate"
+      responses:
+        200:
+          description: "Mechanic updated successfully"
+        401:
+          description: "Unauthorized"
+        404:
+          description: "Mechanic not found"
+
+  /mechanics/workload-analysis:
+    get:
+      tags:
+        - "Mechanics"
+      summary: "Mechanic workload analysis"
+      description: "Get workload analysis for all mechanics"
+      responses:
+        200:
+          description: "Workload analysis retrieved successfully"
+
+  /inventory/:
+    get:
+      tags:
+        - "Inventory"
+      summary: "Get all inventory"
+      description: "Get all inventory with pagination, sorting, and filtering (Cached for 10 minutes)"
+      parameters:
+        - in: query
+          name: page
+          type: integer
+          description: "Page number"
+          default: 1
+        - in: query
+          name: per_page
+          type: integer
+          description: "Items per page (max 100)"
+          default: 10
+        - in: query
+          name: sort_by
+          type: string
+          description: "Sort field"
+          enum: ["id", "name", "price"]
+        - in: query
+          name: sort_order
+          type: string
+          description: "Sort order"
+          enum: ["asc", "desc"]
+        - in: query
+          name: name
+          type: string
+          description: "Search by name (partial match)"
+        - in: query
+          name: min_price
+          type: number
+          description: "Minimum price filter"
+        - in: query
+          name: max_price
+          type: number
+          description: "Maximum price filter"
+      responses:
+        200:
+          description: "Inventory retrieved successfully"
+    post:
+      tags:
+        - "Inventory"
+      summary: "Create inventory item"
+      description: "Create a new inventory item (Requires JWT)"
+      security:
+        - Bearer: []
+      parameters:
+        - in: body
+          name: inventory
+          required: true
+          schema:
+            $ref: "#/definitions/InventoryCreate"
+      responses:
+        201:
+          description: "Inventory item created successfully"
+        400:
+          description: "Validation error"
+        401:
+          description: "Unauthorized"
+        409:
+          description: "Item with same name already exists"
+
+  /inventory/bulk:
+    post:
+      tags:
+        - "Inventory"
+      summary: "Bulk create inventory"
+      description: "Create multiple inventory items at once (Requires JWT)"
+      security:
+        - Bearer: []
+      parameters:
+        - in: body
+          name: inventory_list
+          required: true
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/InventoryCreate"
+      responses:
+        201:
+          description: "Inventory items created successfully"
+        400:
+          description: "Validation error"
+        401:
+          description: "Unauthorized"
+
+  /inventory/{id}:
+    get:
+      tags:
+        - "Inventory"
+      summary: "Get inventory item by ID"
+      parameters:
+        - in: path
+          name: id
+          type: integer
+          required: true
+      responses:
+        200:
+          description: "Inventory item retrieved successfully"
+        404:
+          description: "Inventory item not found"
+    put:
+      tags:
+        - "Inventory"
+      summary: "Update inventory item"
+      security:
+        - Bearer: []
+      parameters:
+        - in: path
+          name: id
+          type: integer
+          required: true
+        - in: body
+          name: inventory
+          schema:
+            $ref: "#/definitions/InventoryUpdate"
+      responses:
+        200:
+          description: "Inventory item updated successfully"
+        401:
+          description: "Unauthorized"
+        404:
+          description: "Inventory item not found"
+        409:
+          description: "Item with same name already exists"
+    delete:
+      tags:
+        - "Inventory"
+      summary: "Delete inventory item"
+      security:
+        - Bearer: []
+      parameters:
+        - in: path
+          name: id
+          type: integer
+          required: true
+      responses:
+        200:
+          description: "Inventory item deleted successfully"
+        401:
+          description: "Unauthorized"
+        404:
+          description: "Inventory item not found"
+
+  /service-tickets/:
+    get:
+      tags:
+        - "Service Tickets"
+      summary: "Get all service tickets"
+      responses:
+        200:
+          description: "Service tickets retrieved successfully"
+    post:
+      tags:
+        - "Service Tickets"
+      summary: "Create service ticket"
+      parameters:
+        - in: body
+          name: ticket
+          required: true
+          schema:
+            $ref: "#/definitions/ServiceTicketCreate"
+      responses:
+        201:
+          description: "Service ticket created successfully"
+        400:
+          description: "Validation error"
+
+  /service-tickets/{id}:
+    get:
+      tags:
+        - "Service Tickets"
+      summary: "Get service ticket by ID"
+      parameters:
+        - in: path
+          name: id
+          type: integer
+          required: true
+      responses:
+        200:
+          description: "Service ticket retrieved successfully"
+        404:
+          description: "Service ticket not found"
+
+  /service-tickets/{id}/inventory:
+    post:
+      tags:
+        - "Service Tickets"
+      summary: "Add inventory to ticket"
+      description: "Add inventory parts to a service ticket"
+      parameters:
+        - in: path
+          name: id
+          type: integer
+          required: true
+        - in: body
+          name: inventory_data
+          required: true
+          schema:
+            type: object
+            properties:
+              inventory_ids:
+                type: array
+                items:
+                  type: integer
+                example: [1, 2, 3]
+      responses:
+        200:
+          description: "Inventory added to ticket successfully"
+        400:
+          description: "Validation error"
+        404:
+          description: "Service ticket not found"
+    delete:
+      tags:
+        - "Service Tickets"
+      summary: "Remove inventory from ticket"
+      description: "Remove inventory parts from a service ticket"
+      parameters:
+        - in: path
+          name: id
+          type: integer
+          required: true
+        - in: body
+          name: inventory_data
+          required: true
+          schema:
+            type: object
+            properties:
+              inventory_ids:
+                type: array
+                items:
+                  type: integer
+                example: [1, 2]
+      responses:
+        200:
+          description: "Inventory removed from ticket successfully"
+        400:
+          description: "Validation error"
+        404:
+          description: "Service ticket not found"
+
+  /service-tickets/{ticket_id}/assign-mechanic/{mechanic_id}:
+    put:
+      tags:
+        - "Service Tickets"
+      summary: "Assign mechanic to ticket"
+      description: "Assign a mechanic to a service ticket (Rate Limited: 20 per minute)"
+      parameters:
+        - in: path
+          name: ticket_id
+          type: integer
+          required: true
+        - in: path
+          name: mechanic_id
+          type: integer
+          required: true
+      responses:
+        200:
+          description: "Mechanic assigned successfully"
+        400:
+          description: "Mechanic already assigned"
+        404:
+          description: "Service ticket or mechanic not found"
+        429:
+          description: "Rate limit exceeded"
+
+  # ===== ENHANCED CALCULATION ENDPOINTS =====
+  /calculations/service-cost:
+    post:
+      tags:
+        - "Calculations"
+      summary: "Calculate service cost with enhanced features"
+      description: |
+        Calculate total service cost including labor, parts, discount, and tax with enhanced business features.
+        
+        **✅ ENHANCED FEATURES:**
+        - JWT Authentication required (admin/manager only)
+        - Rate limiting: 20 requests per minute per user
+        - Caching: Results cached for 3 minutes
+        - Stock validation using enhanced inventory model
+        - Low stock warnings included in response
+        - Audit trail with user information
+        
+        **Mathematical Operations:**
+        - **Addition**: Labor cost (hours × mechanic rates) + Parts cost
+        - **Subtraction**: Apply discount to subtotal
+        - **Multiplication**: Calculate tax on discounted amount
+        
+        **Business Use Cases:**
+        - Service estimate generation for customers
+        - Invoice preparation and billing
+        - Cost analysis and profitability tracking
+        - Resource planning and budgeting
+      operationId: "calculateServiceCostEnhanced"
+      security:
+        - Bearer: []
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: body
+          name: serviceData
+          required: true
+          description: "Service cost calculation parameters with validation"
+          schema:
+            $ref: "#/definitions/ServiceCostCalculation"
+      responses:
+        200:
+          description: "Service cost calculated successfully with enhanced analytics"
+          schema:
+            $ref: "#/definitions/EnhancedServiceCostResponse"
+          examples:
+            application/json:
+              calculation_type: "service_cost"
+              calculated_by:
+                user_id: 1
+                user_name: "John Admin"
+                user_role: "admin"
+              labor_cost: 542.50
+              parts_cost: 105.49
+              subtotal: 647.99
+              final_total: 631.30
+              stock_warnings:
+                - id: 2
+                  name: "Brake Pads"
+                  is_low_stock: true
+              cache_info:
+                cached: false
+                cache_key: "service_cost:abc123"
+        400:
+          description: "Invalid input or insufficient stock"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        401:
+          description: "Authentication required"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        403:
+          description: "Insufficient permissions (admin/manager required)"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        429:
+          description: "Rate limit exceeded (20 requests per minute)"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /calculations/inventory-value:
+    get:
+      tags:
+        - "Calculations"
+      summary: "Calculate total inventory value with analytics"
+      description: |
+        Calculate total value of all inventory items with comprehensive business analytics.
+        
+        **✅ ENHANCED FEATURES:**
+        - Authentication and authorization required
+        - Rate limiting: 30 requests per minute per user
+        - Caching: Results cached for 5 minutes
+        - Low stock analysis and warnings
+        - Category breakdown and analytics
+        - Inventory health metrics and insights
+        
+        **Mathematical Operations:**
+        - **Multiplication**: Price × Quantity for each item
+        - **Addition**: Sum all item values for total inventory worth
+        - **Analysis**: Statistical analysis and trend identification
+        
+        **Business Use Cases:**
+        - Asset valuation for financial reporting
+        - Insurance assessments and coverage
+        - Business performance analysis
+        - Stock level optimization
+        - Category performance tracking
+      operationId: "calculateTotalInventoryValueEnhanced"
+      security:
+        - Bearer: []
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "Enhanced inventory value with comprehensive analytics"
+          schema:
+            $ref: "#/definitions/EnhancedInventoryValueResponse"
+          examples:
+            application/json:
+              calculation_type: "total_inventory_value"
+              total_value: 25467.50
+              total_items: 45
+              low_stock_analysis:
+                items_count: 8
+                total_value_at_risk: 1250.00
+              category_breakdown:
+                "Engine Parts": 
+                  value: 15000.00
+                  items: 20
+                "Brake Components":
+                  value: 8000.00
+                  items: 15
+        401:
+          description: "Authentication required"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        429:
+          description: "Rate limit exceeded (30 requests per minute)"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+    post:
+      tags:
+        - "Calculations"
+      summary: "Calculate specific inventory value with markup"
+      description: |
+        Calculate value of specific inventory items with optional markup for pricing strategy.
+        
+        **Mathematical Operations:**
+        - **Multiplication**: Price × Quantity × (1 + Markup%)
+        - **Analysis**: Profit margin calculations and pricing optimization
+        
+        **Business Use Cases:**
+        - Pricing strategy development
+        - Profit margin analysis
+        - Sales projections and forecasting
+        - Competitive pricing analysis
+      operationId: "calculateSpecificInventoryValue"
+      security:
+        - Bearer: []
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: body
+          name: inventoryData
+          required: true
+          schema:
+            $ref: "#/definitions/InventoryValueCalculation"
+      responses:
+        200:
+          description: "Inventory value with markup calculated successfully"
+          schema:
+            $ref: "#/definitions/InventoryMarkupResponse"
+
+  /calculations/workload-distribution:
+    post:
+      tags:
+        - "Calculations"
+      summary: "Calculate optimized workload distribution"
+      description: |
+        Calculate optimal workload distribution among mechanics with advanced algorithms.
+        
+        **✅ ENHANCED FEATURES:**
+        - Multiple distribution algorithms (equal, rate-based, specialty-based)
+        - Performance optimization metrics
+        - Efficiency ratings and analysis
+        - Resource utilization tracking
+        - Cost-effectiveness analysis
+        
+        **Mathematical Operations:**
+        - **Division**: Total hours ÷ Number of mechanics (equal distribution)
+        - **Proportional**: Distribution based on hourly rates or specialties
+        - **Optimization**: Efficiency and cost-effectiveness calculations
+        
+        **Business Use Cases:**
+        - Resource allocation and scheduling
+        - Capacity planning and optimization
+        - Cost management and budgeting
+        - Performance tracking and analysis
+        - Workforce efficiency improvement
+      operationId: "calculateWorkloadDistributionEnhanced"
+      security:
+        - Bearer: []
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: body
+          name: workloadData
+          required: true
+          description: "Workload distribution parameters and preferences"
+          schema:
+            $ref: "#/definitions/WorkloadDistributionCalculation"
+      responses:
+        200:
+          description: "Enhanced workload distribution with optimization metrics"
+          schema:
+            $ref: "#/definitions/EnhancedWorkloadDistributionResponse"
+          examples:
+            application/json:
+              calculation_type: "workload_distribution"
+              distribution_method: "rate_based"
+              total_hours: 40.0
+              optimization_metrics:
+                distribution_efficiency: 98.5
+                cost_effectiveness: 82.50
+                resource_utilization: "optimal"
+        401:
+          description: "Authentication required"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        429:
+          description: "Rate limit exceeded (15 requests per minute)"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /calculations/cache/clear:
+    post:
+      tags:
+        - "Calculations"
+      summary: "Clear calculation cache (Admin only)"
+      description: |
+        Clear all cached calculation results for performance optimization.
+        
+        **Security Features:**
+        - Admin-only access with role verification
+        - Rate limiting: 5 requests per 5 minutes
+        - Audit logging of cache operations
+        
+        **Use Cases:**
+        - Performance maintenance
+        - Data consistency management
+        - System administration
+      operationId: "clearCalculationCache"
+      security:
+        - Bearer: []
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "Cache cleared successfully"
+          schema:
+            $ref: "#/definitions/CacheClearResponse"
+        401:
+          description: "Authentication required"
+        403:
+          description: "Admin access required"
+        429:
+          description: "Rate limit exceeded"
+
+definitions:
+  Customer:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 1
+      first_name:
+        type: string
+        example: "John"
+      last_name:
+        type: string
+        example: "Doe"
+      email:
+        type: string
+        format: email
+        example: "john.doe@test.com"
+      phone_number:
+        type: string
+        example: "555-1234"
+
+  CustomerCreate:
+    type: object
+    required:
+      - first_name
+      - last_name
+      - email
+      - password
+    properties:
+      first_name:
+        type: string
+        minLength: 1
+        maxLength: 100
+        example: "John"
+      last_name:
+        type: string
+        minLength: 1
+        maxLength: 100
+        example: "Doe"
+      email:
+        type: string
+        format: email
+        example: "john.doe@test.com"
+      phone_number:
+        type: string
+        maxLength: 20
+        example: "555-1234"
+      password:
+        type: string
+        minLength: 6
+        example: "securepass123"
+
+  CustomerUpdate:
+    type: object
+    properties:
+      first_name:
+        type: string
+        example: "John"
+      last_name:
+        type: string
+        example: "Doe"
+      phone_number:
+        type: string
+        example: "555-1234"
+
+  Mechanic:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 1
+      name:
+        type: string
+        example: "Mike Johnson"
+      specialty:
+        type: string
+        example: "Engine Repair"
+      hourly_rate:
+        type: number
+        format: float
+        example: 75.00
+
+  MechanicCreate:
+    type: object
+    required:
+      - name
+      - specialty
+      - hourly_rate
+    properties:
+      name:
+        type: string
+        example: "Mike Johnson"
+      specialty:
+        type: string
+        example: "Engine Repair"
+      hourly_rate:
+        type: number
+        format: float
+        minimum: 0
+        example: 75.00
+
+  MechanicUpdate:
+    type: object
+    properties:
+      name:
+        type: string
+        example: "Mike Johnson"
+      specialty:
+        type: string
+        example: "Engine Repair"
+      hourly_rate:
+        type: number
+        format: float
+        example: 80.00
+
+  Inventory:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 1
+      name:
+        type: string
+        example: "Oil Filter"
+      price:
+        type: number
+        format: float
+        example: 15.99
+
+  InventoryCreate:
+    type: object
+    required:
+      - name
+      - price
+    properties:
+      name:
+        type: string
+        example: "Oil Filter"
+      price:
+        type: number
+        format: float
+        minimum: 0
+        example: 15.99
+
+  InventoryUpdate:
+    type: object
+    properties:
+      name:
+        type: string
+        example: "Oil Filter"
+      price:
+        type: number
+        format: float
+        example: 18.99
+
+  ServiceTicket:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 1
+      customer_id:
+        type: integer
+        example: 1
+      description:
+        type: string
+        example: "Oil change and brake inspection"
+      service_date:
+        type: string
+        format: date
+        example: "2024-12-24"
+      mechanics:
+        type: array
+        items:
+          $ref: "#/definitions/Mechanic"
+      inventory_parts:
+        type: array
+        items:
+          $ref: "#/definitions/Inventory"
+
+  ServiceTicketCreate:
+    type: object
+    required:
+      - customer_id
+      - description
+      - service_date
+    properties:
+      customer_id:
+        type: integer
+        example: 1
+      description:
+        type: string
+        example: "Oil change and brake inspection"
+      service_date:
+        type: string
+        format: date
+        example: "2024-12-24"
+      mechanic_ids:
+        type: array
+        items:
+          type: integer
+        example: [1, 2]
+
+  # Authentication-related definitions
+  LoginCredentials:
+    type: object
+    required:
+      - email
+      - password
+    properties:
+      email:
+        type: string
+        format: email
+        description: "Customer's registered email address"
+        example: "john.doe@test.com"
+        minLength: 5
+        maxLength: 255
+      password:
+        type: string
+        description: "Customer's password (minimum 6 characters)"
+        example: "securepass123"
+        minLength: 6
+        maxLength: 255
+    example:
+      email: "john.doe@test.com"
+      password: "securepass123"
+
+  LoginResponse:
+    type: object
+    required:
+      - message
+      - token
+      - status
+    properties:
+      token:
+        type: string
+        description: "Authentication token used by clients to authenticate themselves in subsequent requests to protected endpoints"
+        example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+        minLength: 1
+      message:
+        type: string
+        description: "Informative message indicating the success or failure of the login operation to help clients understand the outcome"
+        example: "Login successful"
+      status:
+        type: string
+        description: "Status of the operation indicating success or failure"
+        example: "success"
+        enum: ["success", "error"]
+      customer:
+        $ref: "#/definitions/Customer"
+        description: "Customer information (excluding password for security)"
+      timestamp:
+        type: string
+        format: date-time
+        description: "When the login occurred"
+        example: "2024-12-24T10:30:00Z"
+    example:
+      token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      message: "Login successful"
+      status: "success"
+      customer:
+        id: 1
+        first_name: "John"
+        last_name: "Doe"
+        email: "john.doe@test.com"
+        phone_number: "555-1234"
+      timestamp: "2024-12-24T10:30:00Z"
+
+  ErrorResponse:
+    type: object
+    properties:
+      error:
+        type: string
+        description: "Error category or type"
+        example: "Authentication failed"
+      message:
+        type: string
+        description: "Detailed error message"
+        example: "Invalid email or password"
+      timestamp:
+        type: string
+        format: date-time
+        description: "When the error occurred"
+        example: "2024-12-24T10:30:00Z"
+    example:
+      error: "Authentication failed"
+      message: "Invalid email or password"
+      timestamp: "2024-12-24T10:30:00Z"
+
+  # Member Management Definitions
+  CreateMemberPayload:
+    type: object
+    required:
+      - first_name
+      - last_name
+      - email
+      - password
+      - phone_number
+      - membership_type
+    properties:
+      first_name:
+        type: string
+        description: "Member's first name"
+        example: "John"
+        minLength: 2
+        maxLength: 50
+      last_name:
+        type: string
+        description: "Member's last name"
+        example: "Doe"
+        minLength: 2
+        maxLength: 50
+      email:
+        type: string
+        format: email
+        description: "Member's email address (must be unique)"
+        example: "john.doe@example.com"
+        minLength: 5
+        maxLength: 255
+      password:
+        type: string
+        description: "Secure password for member account (minimum 8 characters)"
+        example: "SecurePass123!"
+        minLength: 8
+        maxLength: 255
+      phone_number:
+        type: string
+        description: "Member's contact phone number"
+        example: "555-0123"
+        minLength: 10
+        maxLength: 20
+      membership_type:
+        type: string
+        description: "Type of membership subscription"
+        example: "premium"
+        enum: ["basic", "premium", "gold", "platinum"]
+      date_of_birth:
+        type: string
+        format: date
+        description: "Member's date of birth (optional)"
+        example: "1990-05-15"
+      address:
+        type: object
+        description: "Member's address information (optional)"
+        properties:
+          street:
+            type: string
+            example: "123 Main St"
+          city:
+            type: string
+            example: "Anytown"
+          state:
+            type: string
+            example: "CA"
+          zip_code:
+            type: string
+            example: "12345"
+          country:
+            type: string
+            example: "USA"
+      preferences:
+        type: object
+        description: "Member preferences and settings (optional)"
+        properties:
+          newsletter_subscription:
+            type: boolean
+            example: true
+          notifications_enabled:
+            type: boolean
+            example: true
+          preferred_language:
+            type: string
+            example: "en"
+    example:
+      first_name: "John"
+      last_name: "Doe"
+      email: "john.doe@example.com"
+      password: "SecurePass123!"
+      phone_number: "555-0123"
+      membership_type: "premium"
+      date_of_birth: "1990-05-15"
+      address:
+        street: "123 Main St"
+        city: "Anytown"
+        state: "CA"
+        zip_code: "12345"
+        country: "USA"
+      preferences:
+        newsletter_subscription: true
+        notifications_enabled: true
+        preferred_language: "en"
+
+  CreateMemberResponse:
+    type: object
+    required:
+      - message
+      - status
+      - member
+      - timestamp
+    properties:
+      message:
+        type: string
+        description: "Success message confirming member creation"
+        example: "Member created successfully"
+      status:
+        type: string
+        description: "Operation status indicator"
+        example: "success"
+        enum: ["success", "error"]
+      member:
+        type: object
+        description: "Created member information (excluding sensitive data)"
+        required:
+          - id
+          - first_name
+          - last_name
+          - email
+          - membership_type
+          - join_date
+          - is_active
+        properties:
+          id:
+            type: integer
+            description: "Unique member identifier"
+            example: 123
+          first_name:
+            type: string
+            description: "Member's first name"
+            example: "John"
+          last_name:
+            type: string
+            description: "Member's last name"
+            example: "Doe"
+          email:
+            type: string
+            format: email
+            description: "Member's email address"
+            example: "john.doe@example.com"
+          phone_number:
+            type: string
+            description: "Member's phone number"
+            example: "555-0123"
+          membership_type:
+            type: string
+            description: "Type of membership"
+            example: "premium"
+          join_date:
+            type: string
+            format: date
+            description: "Date when member joined"
+            example: "2024-12-24"
+          is_active:
+            type: boolean
+            description: "Whether the member account is active"
+            example: true
+          member_number:
+            type: string
+            description: "Unique member number for identification"
+            example: "MEM-2024-000123"
+      timestamp:
+        type: string
+        format: date-time
+        description: "When the member was created"
+        example: "2024-12-24T10:30:00Z"
+    example:
+      message: "Member created successfully"
+      status: "success"
+      member:
+        id: 123
+        first_name: "John"
+        last_name: "Doe"
+        email: "john.doe@example.com"
+        phone_number: "555-0123"
+        membership_type: "premium"
+        join_date: "2024-12-24"
+        is_active: true
+        member_number: "MEM-2024-000123"
+      timestamp: "2024-12-24T10:30:00Z"
+
+  UpdateMemberPayload:
+    type: object
+    description: "Payload for updating an existing member's information"
+    properties:
+      first_name:
+        type: string
+        description: "Member's first name"
+        example: "Jane"
+        minLength: 2
+        maxLength: 50
+      last_name:
+        type: string
+        description: "Member's last name"
+        example: "Smith"
+        minLength: 2
+        maxLength: 50
+      email:
+        type: string
+        format: email
+        description: "Member's email address (must be unique)"
+        example: "jane.smith@example.com"
+        minLength: 5
+        maxLength: 255
+      password:
+        type: string
+        description: "New password for member account (minimum 8 characters, optional)"
+        example: "NewSecurePass456!"
+        minLength: 8
+        maxLength: 255
+      phone_number:
+        type: string
+        description: "Member's contact phone number"
+        example: "555-9876"
+        minLength: 10
+        maxLength: 20
+      membership_type:
+        type: string
+        description: "Type of membership subscription"
+        example: "gold"
+        enum: ["basic", "premium", "gold", "platinum"]
+      date_of_birth:
+        type: string
+        format: date
+        description: "Member's date of birth (optional)"
+        example: "1985-08-22"
+      address:
+        type: object
+        description: "Member's address information (optional)"
+        properties:
+          street:
+            type: string
+            example: "456 Oak Ave"
+          city:
+            type: string
+            example: "Springfield"
+          state:
+            type: string
+            example: "NY"
+          zip_code:
+            type: string
+            example: "54321"
+          country:
+            type: string
+            example: "USA"
+      preferences:
+        type: object
+        description: "Member preferences and settings (optional)"
+        properties:
+          newsletter_subscription:
+            type: boolean
+            example: false
+          notifications_enabled:
+            type: boolean
+            example: true
+          preferred_language:
+            type: string
+            example: "en"
+            enum: ["en", "es", "fr", "de"]
+      is_active:
+        type: boolean
+        description: "Whether the member account should be active"
+        example: true
+    example:
+      first_name: "Jane"
+      last_name: "Smith"
+      email: "jane.smith@example.com"
+      membership_type: "gold"
+      phone_number: "555-9876"
+      preferences:
+        newsletter_subscription: false
+        notifications_enabled: true
+        preferred_language: "en"
+
+  UpdateMemberResponse:
+    type: object
+    description: "Response when successfully updating a member"
+    required:
+      - message
+      - status
+      - member
+      - timestamp
+    properties:
+      message:
+        type: string
+        description: "Success message confirming member update"
+        example: "Member updated successfully"
+      status:
+        type: string
+        description: "Operation status indicator"
+        example: "success"
+        enum: ["success", "error"]
+      member:
+        type: object
+        description: "Updated member information (excluding sensitive data)"
+        required:
+          - id
+          - first_name
+          - last_name
+          - email
+          - membership_type
+          - join_date
+          - is_active
+          - last_updated
+        properties:
+          id:
+            type: integer
+            description: "Unique member identifier"
+            example: 123
+          first_name:
+            type: string
+            description: "Member's updated first name"
+            example: "Jane"
+          last_name:
+            type: string
+            description: "Member's updated last name"
+            example: "Smith"
+          email:
+            type: string
+            format: email
+            description: "Member's updated email address"
+            example: "jane.smith@example.com"
+          phone_number:
+            type: string
+            description: "Member's updated phone number"
+            example: "555-9876"
+          membership_type:
+            type: string
+            description: "Updated membership type"
+            example: "gold"
+          join_date:
+            type: string
+            format: date
+            description: "Original date when member joined"
+            example: "2024-12-24"
+          last_updated:
+            type: string
+            format: date-time
+            description: "When the member was last updated"
+            example: "2024-12-25T14:30:00Z"
+          is_active:
+            type: boolean
+            description: "Whether the member account is active"
+            example: true
+          member_number:
+            type: string
+            description: "Unique member number for identification"
+            example: "MEM-2024-000123"
+      timestamp:
+        type: string
+        format: date-time
+        description: "When the update operation was completed"
+        example: "2024-12-25T14:30:00Z"
+    example:
+      message: "Member updated successfully"
+      status: "success"
+      member:
+        id: 123
+        first_name: "Jane"
+        last_name: "Smith"
+        email: "jane.smith@example.com"
+        phone_number: "555-9876"
+        membership_type: "gold"
+        join_date: "2024-12-24"
+        last_updated: "2024-12-25T14:30:00Z"
+        is_active: true
+        member_number: "MEM-2024-000123"
+      timestamp: "2024-12-25T14:30:00Z"
+
+  MemberResponse:
+    type: object
+    description: "Member information response object (secure - excludes password)"
+    required:
+      - id
+      - first_name
+      - last_name
+      - email
+      - role
+      - is_active
+    properties:
+      id:
+        type: integer
+        description: "Unique member identifier"
+        example: 123
+      first_name:
+        type: string
+        description: "Member's first name"
+        example: "John"
+        minLength: 1
+        maxLength: 100
+      last_name:
+        type: string
+        description: "Member's last name"
+        example: "Doe"
+        minLength: 1
+        maxLength: 100
+      email:
+        type: string
+        format: email
+        description: "Member's email address (unique)"
+        example: "john.doe@example.com"
+      phone_number:
+        type: string
+        description: "Member's phone number (optional)"
+        example: "555-0123"
+        maxLength: 20
+      role:
+        type: string
+        description: "Member's role in the system"
+        example: "admin"
+        enum: ["member", "admin", "manager"]
+      is_active:
+        type: boolean
+        description: "Whether the member account is active"
+        example: true
+    example:
+      id: 123
+      first_name: "John"
+      last_name: "Doe"
+      email: "john.doe@example.com"
+      phone_number: "555-0123"
+      role: "admin"
+      is_active: true
+
+  AllMembers:
+    type: array
+    description: "Collection of member objects representing multiple members"
+    items:
+      type: object
+      $ref: "#/definitions/MemberResponse"
+    example:
+      - id: 123
+        first_name: "John"
+        last_name: "Doe"
+        email: "john.doe@example.com"
+        phone_number: "555-0123"
+        role: "admin"
+        is_active: true
+      - id: 124
+        first_name: "Jane"
+        last_name: "Smith"
+        email: "jane.smith@example.com"
+        phone_number: "555-0124"
+        role: "member"
+        is_active: true
+      - id: 125
+        first_name: "Bob"
+        last_name: "Wilson"
+        email: "bob.wilson@example.com"
+        phone_number: "555-0125"
+        role: "manager"
+        is_active: false
+
+  # Core Member Definition
+  Member:
+    type: object
+    required:
+      - id
+      - first_name
+      - last_name
+      - email
+      - membership_type
+      - join_date
+      - is_active
+    properties:
+      id:
+        type: integer
+        description: "Unique member identifier"
+        example: 123
+      first_name:
+        type: string
+        description: "Member's first name"
+        example: "John"
+        minLength: 2
+        maxLength: 50
+      last_name:
+        type: string
+        description: "Member's last name"
+        example: "Doe"
+        minLength: 2
+        maxLength: 50
+      email:
+        type: string
+        format: email
+        description: "Member's email address"
+        example: "john.doe@example.com"
+      phone_number:
+        type: string
+        description: "Member's contact phone number"
+        example: "555-0123"
+      membership_type:
+        type: string
+        description: "Type of membership subscription"
+        example: "premium"
+        enum: ["basic", "premium", "gold", "platinum"]
+      join_date:
+        type: string
+        format: date
+        description: "Date when member joined"
+        example: "2024-12-24"
+      is_active:
+        type: boolean
+        description: "Whether the member account is active"
+        example: true
+      member_number:
+        type: string
+        description: "Unique member number for identification"
+        example: "MEM-2024-000123"
+      date_of_birth:
+        type: string
+        format: date
+        description: "Member's date of birth"
+        example: "1990-05-15"
+      last_login:
+        type: string
+        format: date-time
+        description: "Last login timestamp"
+        example: "2024-12-24T09:15:00Z"
+      created_at:
+        type: string
+        format: date-time
+        description: "Account creation timestamp"
+        example: "2024-12-24T10:30:00Z"
+      updated_at:
+        type: string
+        format: date-time
+        description: "Last profile update timestamp"
+        example: "2024-12-24T10:30:00Z"
+    example:
+      id: 123
+      first_name: "John"
+      last_name: "Doe"
+      email: "john.doe@example.com"
+      phone_number: "555-0123"
+      membership_type: "premium"
+      join_date: "2024-12-24"
+      is_active: true
+      member_number: "MEM-2024-000123"
+      date_of_birth: "1990-05-15"
+      last_login: "2024-12-24T09:15:00Z"
+      created_at: "2024-12-24T10:30:00Z"
+      updated_at: "2024-12-24T10:30:00Z"
+
+  # Member Update Definition
+
+  # Update Member Definitions
+  

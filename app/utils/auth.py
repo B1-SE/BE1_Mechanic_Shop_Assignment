@@ -1,116 +1,83 @@
 """
-Authentication utilities for JWT token handling.
+Authentication utilities for the mechanic shop application.
 """
 
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from flask import request, jsonify, current_app
 from app.models.customer import Customer
 
 
-def encode_token(customer_id):
-    """
-    Encode a JWT token for a specific customer.
+def generate_token(customer_id, email):
+    """Generate a JWT token for a customer"""
+    payload = {
+        'customer_id': customer_id,
+        'email': email,
+        'exp': datetime.now(timezone.utc) + timedelta(hours=24),
+        'iat': datetime.now(timezone.utc)
+    }
     
-    Args:
-        customer_id (int): The customer's unique ID
-        
-    Returns:
-        str: Encoded JWT token
-    """
-    try:
-        payload = {
-            'exp': datetime.utcnow() + timedelta(hours=24),  # Token expires in 24 hours
-            'iat': datetime.utcnow(),  # Token issued at
-            'sub': str(customer_id)  # Subject (customer ID) - must be string for PyJWT
-        }
-        token = jwt.encode(
-            payload,
-            current_app.config['SECRET_KEY'],
-            algorithm='HS256'
-        )
-        return token
-    except Exception as e:
-        return str(e)
+    # Use a simple secret key (in production, use app.config['SECRET_KEY'])
+    secret_key = current_app.config.get('SECRET_KEY', 'dev-secret-key')
+    token = jwt.encode(payload, secret_key, algorithm='HS256')
+    return token
 
 
-def decode_token(token):
-    """
-    Decode a JWT token and extract customer ID.
-    
-    Args:
-        token (str): JWT token to decode
-        
-    Returns:
-        int or str: Customer ID if valid, error message if invalid
-    """
+def verify_token(token):
+    """Verify and decode a JWT token"""
     try:
-        payload = jwt.decode(
-            token,
-            current_app.config['SECRET_KEY'],
-            algorithms=['HS256']
-        )
-        # Convert string customer_id back to integer
-        return int(payload['sub'])
+        secret_key = current_app.config.get('SECRET_KEY', 'dev-secret-key')
+        payload = jwt.decode(token, secret_key, algorithms=['HS256'])
+        return payload
     except jwt.ExpiredSignatureError:
-        return 'Token has expired'
+        return None
     except jwt.InvalidTokenError:
-        return 'Invalid token'
-    except Exception as e:
-        return f'Token error: {str(e)}'
+        return None
 
 
 def token_required(f):
-    """
-    Decorator that validates JWT tokens and injects customer_id into the decorated function.
-    
-    Usage:
-        @token_required
-        def protected_route(customer_id):
-            # customer_id is automatically provided by the decorator
-            pass
-    """
+    """Decorator for routes that require authentication"""
     @wraps(f)
-    def decorated_function(*args, **kwargs):
+    def decorated(*args, **kwargs):
         token = None
         
         # Check for token in Authorization header
         if 'Authorization' in request.headers:
             auth_header = request.headers['Authorization']
             try:
-                # Expected format: "Bearer <token>"
-                token = auth_header.split(" ")[1]
+                token = auth_header.split(" ")[1]  # Bearer <token>
             except IndexError:
-                return jsonify({
-                    'error': 'Invalid authorization header format',
-                    'message': 'Expected format: Bearer <token>'
-                }), 401
+                return jsonify({'error': 'Invalid token format'}), 401
         
         if not token:
-            return jsonify({
-                'error': 'Token is missing',
-                'message': 'Please provide a valid authorization token'
-            }), 401
+            return jsonify({'error': 'Token is missing'}), 401
         
-        # Decode token and get customer ID
-        customer_id = decode_token(token)
+        # Verify token
+        payload = verify_token(token)
+        if payload is None:
+            return jsonify({'error': 'Token is invalid or expired'}), 401
         
-        if isinstance(customer_id, str):  # Error message returned
-            return jsonify({
-                'error': 'Token validation failed',
-                'message': customer_id
-            }), 401
-        
-        # Verify customer exists in database
-        customer = Customer.query.get(customer_id)
+        # Get customer from token
+        customer = Customer.query.get(payload['customer_id'])
         if not customer:
-            return jsonify({
-                'error': 'Invalid customer',
-                'message': 'Customer associated with token not found'
-            }), 401
+            return jsonify({'error': 'Customer not found'}), 401
         
-        # Pass customer_id to the decorated function
-        return f(customer_id, *args, **kwargs)
+        # Pass customer to the route
+        return f(current_customer=customer, *args, **kwargs)
     
-    return decorated_function
+    return decorated
+
+
+def check_customer_ownership(customer_id):
+    """Check if the current customer owns the resource"""
+    def decorator(f):
+        @wraps(f)
+        def decorated(current_customer, *args, **kwargs):
+            # Extract customer_id from route parameters
+            route_customer_id = kwargs.get('customer_id')
+            if route_customer_id and current_customer.id != route_customer_id:
+                return jsonify({'error': 'Access denied'}), 403
+            return f(current_customer=current_customer, *args, **kwargs)
+        return decorated
+    return decorator

@@ -3,21 +3,24 @@ Application factory for the mechanic shop Flask application.
 """
 
 from flask import Flask, send_from_directory, jsonify
+from flask import Blueprint
 from sqlalchemy import inspect
 from datetime import datetime
 import os
-
 from config import config
-from app.extensions import db, ma, limiter, cache
+from app.extensions import db, ma, limiter, cache, jwt, cors
+
+# Global variable to track if swagger is already set up
+_swagger_registered = False
 
 
-def create_app(config_name=None):
+def create_app(config_class=None):
     """
     Create and configure the Flask application.
     
     Args:
-        config_name (str): Configuration name ('development', 'testing', 'production')
-                          If None, defaults to 'development'
+        config_class: Configuration class object
+                     If None, defaults to 'development' config
     
     Returns:
         Flask: Configured Flask application instance
@@ -25,10 +28,10 @@ def create_app(config_name=None):
     app = Flask(__name__)
     
     # Load configuration
-    if config_name is None:
-        config_name = 'development'
+    if config_class is None:
+        config_class = config['development']
     
-    app.config.from_object(config[config_name])
+    app.config.from_object(config_class)
     
     # Configure caching (using simple in-memory cache for development)
     app.config['CACHE_TYPE'] = 'simple'
@@ -39,6 +42,8 @@ def create_app(config_name=None):
     ma.init_app(app)
     limiter.init_app(app)  # Initialize rate limiter
     cache.init_app(app)    # Initialize cache
+    jwt.init_app(app)
+    cors.init_app(app)
     
     # Register blueprints
     register_blueprints(app)
@@ -47,28 +52,170 @@ def create_app(config_name=None):
     with app.app_context():
         inspector = inspect(db.engine)
         # Import models to ensure they are registered with SQLAlchemy
-        from app.models import Customer, ServiceTicket, Mechanic, Inventory
+        try:
+            from app.models.customer import Customer
+            from app.models.service_ticket import ServiceTicket
+            from app.models.mechanic import Mechanic
+            from app.models.inventory import InventoryItem
+            # Skip member model for now to avoid import issues
+            # from app.models.member import Member
+        except ImportError as e:
+            print(f"Warning: Could not import some models: {e}")
         
         if not inspector.has_table('customers'):
             print("Creating database tables...")
             db.create_all()
             print("Database tables created successfully!")
     
+    # Only register Swagger in non-testing environments
+    if not app.config.get('TESTING', False):
+        setup_swagger(app)
+    
     return app
 
 
-def register_blueprints(app):
-    """Register application blueprints."""
-    from app.routes import customers_bp
-    from app.blueprints.mechanics import mechanics_bp
-    from app.blueprints.service_tickets import service_tickets_bp
-    from app.blueprints.inventory import inventory_bp
+def setup_swagger(app):
+    """Setup Swagger documentation"""
+    global _swagger_registered
     
-    # Register blueprints with URL prefixes
-    app.register_blueprint(customers_bp, url_prefix='/customers')
-    app.register_blueprint(mechanics_bp, url_prefix='/mechanics')
-    app.register_blueprint(service_tickets_bp, url_prefix='/service-tickets')
-    app.register_blueprint(inventory_bp, url_prefix='/inventory')
+    if _swagger_registered:
+        return
+    
+    try:
+        from flask_swagger import swagger
+        from flask_swagger_ui import get_swaggerui_blueprint
+        
+        # Swagger configuration
+        @app.route("/spec")
+        def spec():
+            return swagger(app, template={
+                "swagger": "2.0",
+                "info": {
+                    "title": "Mechanic Shop Management API",
+                    "description": "A comprehensive API for managing a mechanic shop's operations including customers, mechanics, service tickets, inventory, and memberships.",
+                    "version": "1.0.0",
+                    "contact": {
+                        "name": "API Support",
+                        "email": "support@mechanicshop.com"
+                    }
+                },
+                "host": "localhost:5000",
+                "basePath": "/",
+                "schemes": ["http", "https"],
+                "securityDefinitions": {
+                    "Bearer": {
+                        "type": "apiKey",
+                        "name": "Authorization",
+                        "in": "header",
+                        "description": "JWT Authorization header using the Bearer scheme. Example: 'Authorization: Bearer {token}'"
+                    }
+                },
+                "tags": [
+                    {"name": "customers", "description": "Customer management operations"},
+                    {"name": "mechanics", "description": "Mechanic management operations"},
+                    {"name": "service-tickets", "description": "Service ticket management operations"},
+                    {"name": "inventory", "description": "Inventory management operations"},
+                    {"name": "members", "description": "Membership management operations"},
+                    {"name": "calculations", "description": "Mathematical calculation operations"}
+                ]
+            })
+        
+        # Swagger UI configuration
+        SWAGGER_URL = '/docs'
+        API_URL = '/spec'
+        
+        # Check if the blueprint is already registered
+        if 'swagger_ui' not in [bp.name for bp in app.blueprints.values()]:
+            swaggerui_blueprint = get_swaggerui_blueprint(
+                SWAGGER_URL,
+                API_URL,
+                config={
+                    'app_name': "Mechanic Shop Management API"
+                }
+            )
+            app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
+            _swagger_registered = True
+            
+    except ImportError:
+        # Swagger packages not installed, skip swagger setup
+        pass
+    except Exception as e:
+        # Log the error but don't crash the app
+        print(f"Warning: Could not set up Swagger: {e}")
+
+
+def register_blueprints(app):
+    """Register application blueprints"""
+    # Register customers blueprint
+    try:
+        from app.routes.customers import customers_bp
+        app.register_blueprint(customers_bp, url_prefix='/customers')
+    except ImportError as e:
+        print(f"Warning: Could not import customers blueprint: {e}")
+    
+    # Register other blueprints with proper URL prefixes
+    try:
+        from app.routes.service_tickets import service_tickets_bp
+        app.register_blueprint(service_tickets_bp, url_prefix='/service-tickets')
+    except ImportError:
+        pass
+    
+    try:
+        from app.routes.mechanics import mechanics_bp
+        app.register_blueprint(mechanics_bp, url_prefix='/mechanics')
+    except ImportError:
+        pass
+    
+    try:
+        from app.routes.inventory import inventory_bp
+        app.register_blueprint(inventory_bp, url_prefix='/inventory')
+    except ImportError:
+        pass
+    
+    try:
+        from app.routes.calculations import calculations_bp
+        app.register_blueprint(calculations_bp, url_prefix='/calculations')
+    except ImportError:
+        pass
+    
+    # Create members blueprint as alias to customers
+    try:
+        members_bp = Blueprint('members', __name__)
+        
+        # Register members routes that delegate to customers
+        @members_bp.route('/', methods=['GET'])
+        def get_members():
+            from app.routes.customers import get_all_customers
+            return get_all_customers()
+            
+        @members_bp.route('/', methods=['POST'])
+        def create_member():
+            from app.routes.customers import create_customer
+            return create_customer()
+            
+        @members_bp.route('/<int:member_id>', methods=['GET'])
+        def get_member(member_id):
+            from app.routes.customers import get_customer
+            return get_customer(member_id)
+            
+        @members_bp.route('/<int:member_id>', methods=['PUT'])
+        def update_member(member_id):
+            from app.routes.customers import update_customer
+            return update_customer(member_id)
+            
+        @members_bp.route('/<int:member_id>', methods=['DELETE'])
+        def delete_member(member_id):
+            from app.routes.customers import delete_customer
+            return delete_customer(member_id)
+            
+        @members_bp.route('/login', methods=['POST'])
+        def member_login():
+            from app.routes.customers import login
+            return login()
+            
+        app.register_blueprint(members_bp, url_prefix='/members')
+    except ImportError as e:
+        print(f"Warning: Could not create members blueprint: {e}")
     
     # Health check endpoint
     @app.route('/health')
@@ -119,6 +266,9 @@ def register_blueprints(app):
                 'mechanics': '/mechanics',
                 'service_tickets': '/service-tickets',
                 'inventory': '/inventory',
-                'health': '/health'
+                'members': '/members',
+                'calculations': '/calculations',
+                'health': '/health',
+                'api_docs': '/docs'
             }
         }, 200

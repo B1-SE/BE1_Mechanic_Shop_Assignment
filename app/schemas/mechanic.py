@@ -1,27 +1,25 @@
 """
-Mechanic schema for validation and serialization.
+Mechanic schemas for the mechanic shop application.
 """
 
-from marshmallow import fields, validate
-from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
-from app.models.mechanic import Mechanic
+from marshmallow import fields, validate, Schema
 
 
-class MechanicSchema(SQLAlchemyAutoSchema):
-    """Schema for Mechanic model validation and serialization."""
+class MechanicSchema(Schema):
+    """Mechanic schema for serialization/deserialization"""
     
-    class Meta:
-        model = Mechanic
-        include_fk = True
-        load_instance = False
-        
-    id = fields.Integer(dump_only=True)
-    name = fields.String(required=True, validate=validate.Length(min=1, max=100))
+    id = fields.Int(dump_only=True)
+    name = fields.Str(required=True, validate=validate.Length(min=1, max=100))
     email = fields.Email(required=True)
-    phone = fields.String(validate=validate.Length(max=20))
-    salary = fields.Float(validate=validate.Range(min=0))
+    phone = fields.Str(validate=validate.Length(max=20))
+    salary = fields.Decimal(as_string=True, places=2)
+    hire_date = fields.DateTime(dump_only=True)
+    is_active = fields.Bool()
+    specializations = fields.Str()
+    created_at = fields.DateTime(dump_only=True)
+    updated_at = fields.DateTime(dump_only=True)
 
 
-# Schema instances for single and multiple mechanics
+# Schema instances
 mechanic_schema = MechanicSchema()
 mechanics_schema = MechanicSchema(many=True)

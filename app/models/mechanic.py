@@ -2,8 +2,8 @@
 Mechanic model for the mechanic shop application.
 """
 
-from app.extensions import db
-from . import service_mechanics
+from app.extensions import db, ma
+from datetime import datetime, timezone
 
 
 class Mechanic(db.Model):
@@ -12,16 +12,16 @@ class Mechanic(db.Model):
     __tablename__ = 'mechanics'
     
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255), nullable=False)
-    email = db.Column(db.String(255), unique=True, nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
     phone = db.Column(db.String(20))
-    salary = db.Column(db.Float)
+    salary = db.Column(db.Numeric(10, 2))
+    hire_date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    is_active = db.Column(db.Boolean, default=True)
+    specializations = db.Column(db.Text)  # JSON string of specializations
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
-    # Relationships
-    service_tickets = db.relationship('ServiceTicket', 
-                                    secondary=service_mechanics, 
-                                    back_populates='mechanics')
-
     def __repr__(self):
         return f"<Mechanic {self.name}>"
     
@@ -32,5 +32,10 @@ class Mechanic(db.Model):
             'name': self.name,
             'email': self.email,
             'phone': self.phone,
-            'salary': self.salary
+            'salary': float(self.salary) if self.salary else 0.0,
+            'hire_date': self.hire_date.isoformat() if self.hire_date else None,
+            'is_active': self.is_active,
+            'specializations': self.specializations,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

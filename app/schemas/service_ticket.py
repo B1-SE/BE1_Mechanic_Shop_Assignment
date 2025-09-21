@@ -1,29 +1,31 @@
 """
-Service Ticket schema for validation and serialization.
+Service ticket schemas for the mechanic shop application.
 """
 
-from marshmallow import fields, validate
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
+from marshmallow import fields, validate
 from app.models.service_ticket import ServiceTicket
+from app.extensions import db
 
 
 class ServiceTicketSchema(SQLAlchemyAutoSchema):
-    """Schema for ServiceTicket model validation and serialization."""
+    """Service ticket schema for serialization/deserialization"""
     
     class Meta:
         model = ServiceTicket
-        include_fk = True
-        load_instance = False
-        
-    id = fields.Integer(dump_only=True)
-    customer_id = fields.Integer(required=True)
-    description = fields.String(required=True, validate=validate.Length(min=1, max=500))
-    service_date = fields.DateTime(required=True)
-    mechanic_ids = fields.List(fields.Integer(), load_default=[])  # For loading mechanic assignments
-    mechanics = fields.Nested('MechanicSchema', many=True, dump_only=True)  # For dumping assigned mechanics
-    customer = fields.Nested('CustomerSchema', dump_only=True)  # For dumping customer details
+        sqla_session = db.session
+        load_instance = True
+    
+    # Add validation
+    customer_id = fields.Int(required=True)
+    vehicle_info = fields.Str(required=True, validate=validate.Length(min=1, max=200))
+    description = fields.Str(required=True, validate=validate.Length(min=1))
+    status = fields.Str(validate=validate.OneOf(['pending', 'in_progress', 'completed', 'cancelled']))
+    priority = fields.Str(validate=validate.OneOf(['low', 'medium', 'high', 'urgent']))
+    estimated_cost = fields.Decimal(as_string=True, places=2)
+    actual_cost = fields.Decimal(as_string=True, places=2)
 
 
-# Schema instances for single and multiple service tickets
+# Schema instances
 service_ticket_schema = ServiceTicketSchema()
 service_tickets_schema = ServiceTicketSchema(many=True)
