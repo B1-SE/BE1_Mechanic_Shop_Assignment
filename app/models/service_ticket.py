@@ -24,7 +24,7 @@ class ServiceTicket(db.Model):
     completed_at = db.Column(db.DateTime)
     
     # Relationships
-    customer = db.relationship('Customer', backref='service_tickets')
+    customer = db.relationship('Customer', back_populates='service_tickets')
     mechanic = db.relationship('Mechanic', backref='assigned_tickets')
     
     def __repr__(self):

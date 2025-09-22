@@ -6,19 +6,13 @@ from flask import Blueprint, request, jsonify
 from app.extensions import db, limiter
 from app.models.customer import Customer
 from app.schemas.customer import customer_schema, customers_schema
-from app.utils.util import generate_token, token_required, check_customer_ownership
+from app.utils.auth import generate_token, verify_token, token_required, check_customer_ownership
+from app.utils.util import validate_email
 from marshmallow import ValidationError
 from werkzeug.security import check_password_hash
-import re
 
 # Create customers blueprint
 customers_bp = Blueprint('customers', __name__)
-
-
-def validate_email(email):
-    """Validate email format"""
-    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    return re.match(pattern, email) is not None
 
 
 @customers_bp.route('/', methods=['GET'])
@@ -27,9 +21,7 @@ def get_all_customers():
     """Get all customers"""
     try:
         customers = Customer.query.all()
-        result = []
-        for customer in customers:
-            result.append(customer.to_dict())
+        result = customers_schema.dump(customers)
         
         return jsonify({
             'customers': result,
@@ -47,7 +39,7 @@ def get_customer(customer_id):
         customer = db.session.get(Customer, customer_id)
         if not customer:
             return jsonify({'error': 'Customer not found'}), 404
-        return jsonify(customer.to_dict()), 200
+        return jsonify(customer_schema.dump(customer)), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -91,7 +83,7 @@ def create_customer():
         db.session.add(customer)
         db.session.commit()
         
-        return jsonify(customer.to_dict()), 201
+        return jsonify(customer_schema.dump(customer)), 201
         
     except Exception as e:
         db.session.rollback()
@@ -101,10 +93,13 @@ def create_customer():
 @customers_bp.route('/<int:customer_id>', methods=['PUT'])
 @limiter.limit("50 per minute")
 @token_required
-@check_customer_ownership('customer_id')
 def update_customer(current_customer, customer_id):
     """Update a customer (requires authentication)"""
     try:
+        # Check ownership inline
+        if current_customer.id != customer_id:
+            return jsonify({'error': 'Unauthorized access'}), 403
+            
         customer = db.session.get(Customer, customer_id)
         if not customer:
             return jsonify({'error': 'Customer not found'}), 404
@@ -134,7 +129,7 @@ def update_customer(current_customer, customer_id):
             customer.set_password(data['password'])
         
         db.session.commit()
-        return jsonify(customer.to_dict()), 200
+        return jsonify(customer_schema.dump(customer)), 200
         
     except Exception as e:
         db.session.rollback()
@@ -144,10 +139,13 @@ def update_customer(current_customer, customer_id):
 @customers_bp.route('/<int:customer_id>', methods=['DELETE'])
 @limiter.limit("50 per minute")
 @token_required
-@check_customer_ownership('customer_id')
 def delete_customer(current_customer, customer_id):
     """Delete a customer (requires authentication)"""
     try:
+        # Check ownership inline
+        if current_customer.id != customer_id:
+            return jsonify({'error': 'Unauthorized access'}), 403
+            
         customer = db.session.get(Customer, customer_id)
         if not customer:
             return jsonify({'error': 'Customer not found'}), 404
@@ -163,7 +161,7 @@ def delete_customer(current_customer, customer_id):
 
 
 @customers_bp.route('/login', methods=['POST'])
-@limiter.limit("10 per minute")
+@limiter.limit("50 per minute")
 def login():
     """Customer login"""
     try:
@@ -174,17 +172,30 @@ def login():
         
         customer = Customer.query.filter_by(email=data['email']).first()
         
-        if not customer or not customer.check_password(data['password']):
+        if not customer:
+            return jsonify({'error': 'Invalid credentials'}), 401
+            
+        # Debug logging
+        print(f"Customer found: {customer.email}")
+        print(f"Has password hash: {bool(customer.password_hash)}")
+        
+        if not customer.password_hash:
+            return jsonify({'error': 'Account not properly configured'}), 401
+            
+        if not customer.check_password(data['password']):
             return jsonify({'error': 'Invalid credentials'}), 401
         
-        # Generate proper JWT token
+        # Generate proper JWT token - fix this line to include email
         token = generate_token(customer.id, customer.email)
         
         return jsonify({
             'message': 'Login successful',
-            'customer': customer.to_dict(),
+            'customer': customer_schema.dump(customer),
             'token': token
         }), 200
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"Login error: {str(e)}")  # Debug logging
+        return jsonify({'error': f'Login failed: {str(e)}'}), 500
+
+

@@ -222,19 +222,15 @@ def register_blueprints(app):
 
         @members_bp.route('/<int:member_id>', methods=['PUT'])
         def update_member(member_id):
-            # Import the view function directly and call it properly
-            from app.routes.customers import customers_bp
-            # Get the actual view function from the customers blueprint
-            view_func = customers_bp.view_functions['update_customer']
-            return view_func(member_id)
+            from app.routes.customers import update_customer
+            # The update_customer function expects `current_customer` from the token
+            # The token_required decorator will handle this when the request is processed
+            return update_customer(customer_id=member_id)
 
         @members_bp.route('/<int:member_id>', methods=['DELETE'])
         def delete_member(member_id):
-            # Import the view function directly and call it properly
-            from app.routes.customers import customers_bp
-            # Get the actual view function from the customers blueprint
-            view_func = customers_bp.view_functions['delete_customer']
-            return view_func(member_id)
+            from app.routes.customers import delete_customer
+            return delete_customer(customer_id=member_id)
 
         @members_bp.route('/login', methods=['POST'])
         def member_login():

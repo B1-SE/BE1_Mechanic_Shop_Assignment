@@ -26,16 +26,13 @@ class Mechanic(db.Model):
         return f"<Mechanic {self.name}>"
     
     def to_dict(self):
-        """Convert mechanic to dictionary representation."""
+        """Convert mechanic to dictionary"""
         return {
             'id': self.id,
             'name': self.name,
             'email': self.email,
             'phone': self.phone,
-            'salary': float(self.salary) if self.salary else 0.0,
-            'hire_date': self.hire_date.isoformat() if self.hire_date else None,
-            'is_active': self.is_active,
-            'specializations': self.specializations,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+            'salary': float(self.salary) if self.salary else None,
+            'created_at': self.created_at.isoformat() if hasattr(self, 'created_at') and self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if hasattr(self, 'updated_at') and self.updated_at else None
         }

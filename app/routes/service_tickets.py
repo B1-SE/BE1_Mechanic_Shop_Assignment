@@ -34,7 +34,7 @@ def get_all_service_tickets():
 def get_service_ticket(ticket_id):
     """Get a specific service ticket"""
     try:
-        ticket = ServiceTicket.query.get(ticket_id)
+        ticket = db.session.get(ServiceTicket, ticket_id)
         if not ticket:
             return jsonify({'error': 'Service ticket not found'}), 404
         return jsonify(ticket.to_dict()), 200
