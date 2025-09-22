@@ -55,5 +55,21 @@ jobs:
         pytest tests/ \
           --cov=app \
           --cov-report=term-missing \
-          --cov-fail-under=95 \
-          -v
+          --cov-fail-under=95
+
+  deploy:
+    name: Deploy to Render
+    runs-on: ubuntu-latest
+    # This job depends on the 'build-and-test' job completing successfully
+    needs: build-and-test
+    # This job only runs for pushes to the 'main' branch
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Trigger Render Deployment
+        run: |
+          curl --request POST \
+            --url https://api.render.com/v1/services/${{ secrets.SERVICE_ID }}/deploys \
+            --header 'Accept: application/json' \
+            --header 'Authorization: Bearer ${{ secrets.RENDER_API_KEY }}' \
+            --header 'Content-Type: application/json' \
+            --data '{"clearCache": "no"}'
