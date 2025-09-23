@@ -148,19 +148,24 @@ def create_success_response(
     Returns:
         tuple: (response, status_code)
     """
-    if isinstance(data, list):
-        response = {
-            "message": message,
-            "data": data,
-            "count": len(data),
-            "timestamp": datetime.utcnow().isoformat(),
+    response = {
+        "message": message,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+
+    # Handle paginated data structure
+    if isinstance(data, dict) and "items" in data and "total" in data:
+        response["data"] = data["items"]
+        response["pagination"] = {
+            key: value for key, value in data.items() if key != "items"
         }
+    # Handle simple list
+    elif isinstance(data, list):
+        response["data"] = data
+        response["count"] = len(data)
+    # Handle single object
     else:
-        response = {
-            "message": message,
-            "data": data,
-            "timestamp": datetime.utcnow().isoformat(),
-        }
+        response["data"] = data
 
     return jsonify(response), status_code
 
