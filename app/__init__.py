@@ -313,3 +313,30 @@ def register_additional_routes(app):
         """Serve static files from the static directory."""
         static_dir = os.path.join(app.root_path, 'static')
         return send_from_directory(static_dir, filename)
+
+    # Product data endpoint (example implementation)
+    @app.route('/api/products', methods=['GET'])
+    def get_products():
+        """Get list of products"""
+        # Sample response structure
+        return {
+            "Version": "1.0.0",
+            "StatusCode": 200,
+            "ApiRequestId": "unique-request-id",
+            "Result": [
+                {
+                    "id": 1,
+                    "name": "Product 1",
+                    "description": "Description for product 1",
+                    "price": 9.99,
+                    "currency": "USD"
+                },
+                {
+                    "id": 2,
+                    "name": "Product 2",
+                    "description": "Description for product 2",
+                    "price": 19.99,
+                    "currency": "USD"
+                }
+            ]
+        }, 200

@@ -3,7 +3,6 @@ Test script for JWT token authentication functionality.
 """
 
 import requests
-import json
 
 BASE_URL = "http://127.0.0.1:5000"
 
@@ -45,7 +44,7 @@ def test_token_authentication():
     print(f"Status: {response.status_code}")
     if response.status_code == 200:
         login_result = response.json()
-        print(f"✅ Login successful!")
+        print("✅ Login successful!")
         print(f"Token: {login_result['token'][:50]}...")
         token = login_result['token']
     else:
@@ -82,7 +81,7 @@ def test_token_authentication():
     print(f"Status: {response.status_code}")
     if response.status_code == 200:
         tickets_result = response.json()
-        print(f"✅ Protected route accessed successfully!")
+        print("✅ Protected route accessed successfully!")
         print(f"Found {len(tickets_result['tickets'])} service tickets")
     else:
         print(f"❌ Failed to access protected route: {response.text}")

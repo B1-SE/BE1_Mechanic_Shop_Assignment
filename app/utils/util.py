@@ -3,7 +3,7 @@ General utility functions for the mechanic shop application.
 """
 
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 from datetime import datetime
 from flask import jsonify
 

@@ -5,7 +5,7 @@ Authentication utilities for the mechanic shop application.
 import jwt
 import os
 from datetime import datetime, timedelta, timezone
-from flask import current_app, jsonify, request
+from flask import jsonify, request
 from functools import wraps
 
 def generate_token(customer_id, email):

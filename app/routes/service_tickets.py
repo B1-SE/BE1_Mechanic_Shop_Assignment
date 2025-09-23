@@ -5,7 +5,6 @@ Service ticket routes for the mechanic shop application.
 from flask import Blueprint, request, jsonify
 from app.extensions import db, limiter
 from app.models.service_ticket import ServiceTicket
-from marshmallow import ValidationError
 
 # Create service tickets blueprint
 service_tickets_bp = Blueprint('service_tickets', __name__)

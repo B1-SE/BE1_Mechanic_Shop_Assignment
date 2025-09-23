@@ -3,7 +3,7 @@ Customer schemas for the mechanic shop application.
 """
 
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
-from marshmallow import fields, validate, ValidationError
+from marshmallow import fields, validate
 from app.models.customer import Customer
 from app.extensions import db
 

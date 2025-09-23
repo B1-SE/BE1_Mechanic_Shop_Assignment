@@ -4,7 +4,6 @@ Service Ticket routes for the mechanic shop API.
 
 from flask import Blueprint, jsonify, request
 from marshmallow import ValidationError
-from datetime import datetime
 from app.extensions import db, limiter
 from app.models.service_ticket import ServiceTicket
 from app.models.mechanic import Mechanic

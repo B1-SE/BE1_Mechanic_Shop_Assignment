@@ -2,8 +2,6 @@
 Service ticket tests for the mechanic shop application.
 """
 
-import pytest
-from app.models.service_ticket import ServiceTicket
 
 
 class TestServiceTicketAPI:

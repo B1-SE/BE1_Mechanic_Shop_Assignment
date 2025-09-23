@@ -5,8 +5,6 @@ Inventory routes for the mechanic shop application.
 from flask import Blueprint, request, jsonify
 from app.extensions import db, limiter
 from app.models.inventory import InventoryItem
-from app.schemas.inventory import inventory_item_schema, inventory_items_schema
-from marshmallow import ValidationError
 from decimal import Decimal, InvalidOperation
 
 # Create inventory blueprint

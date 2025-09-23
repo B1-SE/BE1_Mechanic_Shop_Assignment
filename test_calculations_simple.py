@@ -1,6 +1,5 @@
 """Simple test for calculations endpoints"""
 import requests
-import json
 
 def test_calculations_endpoints():
     """Test calculations endpoints manually"""

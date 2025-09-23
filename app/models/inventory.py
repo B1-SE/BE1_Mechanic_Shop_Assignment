@@ -2,7 +2,7 @@
 Inventory model for the mechanic shop application.
 """
 
-from app.extensions import db, ma
+from app.extensions import db
 from datetime import datetime, timezone
 
 

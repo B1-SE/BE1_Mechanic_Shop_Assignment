@@ -125,7 +125,7 @@ def test_customer_crud():
         print(f"❌ Error checking deleted customer: {e}")
     
     # Test API info endpoints
-    print(f"\n=== Testing API Info Endpoints ===")
+    print("\n=== Testing API Info Endpoints ===")
     try:
         # Test root endpoint
         response = requests.get(f"{BASE_URL}/")
@@ -133,7 +133,7 @@ def test_customer_crud():
         if response.status_code == 200:
             info = response.json()
             print(f"API message: {info.get('message')}")
-            print(f"✅ Root endpoint successful")
+            print("✅ Root endpoint successful")
         
         # Test health endpoint
         response = requests.get(f"{BASE_URL}/health")
@@ -141,7 +141,7 @@ def test_customer_crud():
         if response.status_code == 200:
             health = response.json()
             print(f"Health status: {health.get('status')}")
-            print(f"✅ Health endpoint successful")
+            print("✅ Health endpoint successful")
     except Exception as e:
         print(f"❌ API info endpoints error: {e}")
     

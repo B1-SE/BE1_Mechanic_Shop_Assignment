@@ -6,10 +6,8 @@ from flask import Blueprint, request, jsonify
 from app.extensions import db, limiter
 from app.models.customer import Customer
 from app.schemas.customer import customer_schema, customers_schema
-from app.utils.auth import generate_token, verify_token, token_required, check_customer_ownership
+from app.utils.auth import generate_token, token_required
 from app.utils.util import validate_email
-from marshmallow import ValidationError
-from werkzeug.security import check_password_hash
 
 # Create customers blueprint
 customers_bp = Blueprint('customers', __name__)

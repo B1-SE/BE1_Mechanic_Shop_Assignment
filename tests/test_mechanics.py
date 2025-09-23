@@ -2,8 +2,6 @@
 Test cases for the mechanics API endpoints.
 """
 
-import pytest
-from app import create_app
 
 class TestMechanicsAPI:
 

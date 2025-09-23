@@ -3,7 +3,6 @@ Members routes (alias for customers with membership features).
 """
 
 from flask import Blueprint
-from app.routes.customers import customers_bp
 
 # Create members blueprint as an alias to customers
 members_bp = Blueprint('members', __name__)

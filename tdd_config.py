@@ -2,9 +2,7 @@
 Test-Driven Development configuration and utilities
 """
 
-import pytest
 import subprocess
-import sys
 from pathlib import Path
 
 
@@ -113,7 +111,6 @@ class TDDRunner:
         print("Press Ctrl+C to stop")
         
         try:
-            import watchdog
             from watchdog.observers import Observer
             from watchdog.events import FileSystemEventHandler
             

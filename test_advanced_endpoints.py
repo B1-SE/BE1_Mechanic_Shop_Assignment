@@ -3,7 +3,6 @@ Test script for advanced endpoints: pagination, sorting, filtering, and bulk ope
 """
 
 import requests
-import json
 
 BASE_URL = "http://127.0.0.1:5000"
 
@@ -135,7 +134,7 @@ def test_advanced_endpoints():
     response = requests.get(f"{BASE_URL}/mechanics/by-workload?order=asc&limit=2")
     if response.status_code == 200:
         data = response.json()
-        print(f"✅ Mechanics by workload (asc, limit 2):")
+        print("✅ Mechanics by workload (asc, limit 2):")
         for mechanic in data['mechanics']:
             print(f"   {mechanic['name']}: {mechanic['ticket_count']} tickets")
     else:
@@ -154,7 +153,7 @@ def test_advanced_endpoints():
         response = requests.put(f"{BASE_URL}/service-tickets/{ticket_ids[0]}/edit", json=edit_data)
         if response.status_code == 200:
             data = response.json()
-            print(f"✅ Bulk edit successful:")
+            print("✅ Bulk edit successful:")
             print(f"   Changes made: {len(data['changes_made'])}")
             for change in data['changes_made']:
                 print(f"   - {change}")
@@ -180,7 +179,7 @@ def test_advanced_endpoints():
     if response.status_code != 200 or response.json().get('pagination', {}).get('page', 1) == 1:
         print("✅ Invalid page number handled gracefully")
     else:
-        print(f"❌ Invalid page number not handled properly")
+        print("❌ Invalid page number not handled properly")
     
     # Test bulk edit with non-existent mechanics
     if ticket_ids:

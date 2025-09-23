@@ -6,7 +6,6 @@ from flask import Blueprint, request, jsonify
 from app.extensions import db, limiter
 from app.models.mechanic import Mechanic
 from app.schemas.mechanic import mechanic_schema, mechanics_schema
-from app.utils.util import validate_email, create_error_response, create_success_response
 from marshmallow import ValidationError
 
 mechanics_bp = Blueprint('mechanics', __name__)

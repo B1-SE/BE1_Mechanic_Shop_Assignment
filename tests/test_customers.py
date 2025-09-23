@@ -1,5 +1,3 @@
-import pytest
-from tests.conftest import init_database, clean_database
 
 class TestCustomersAPI:
     """Test cases for customers API endpoints."""

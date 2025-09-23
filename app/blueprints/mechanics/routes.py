@@ -67,8 +67,6 @@ def get_mechanics_by_workload():
     - Performance reviews and workload analysis
     """
     try:
-        from sqlalchemy import func
-        from app.models.service_ticket import ServiceTicket
         
         # Get query parameters
         order = request.args.get('order', 'desc').lower()
@@ -83,7 +81,6 @@ def get_mechanics_by_workload():
         
         # Build subquery to count tickets per mechanic
         # Using a subquery approach for better compatibility
-        from sqlalchemy.orm import aliased
         
         # Get all mechanics first
         all_mechanics = Mechanic.query.all()
