@@ -22,3 +22,12 @@ click==8.3.0
 blinker==1.9.0
 greenlet==3.2.4
 typing_extensions==4.15.0
+bandit>=1.7.5
+safety>=2.3.0
+watchdog>=3.0.0
+python-dotenv>=1.0.0
+
+# Include production requirements
+-r requirements.txt
+
+
