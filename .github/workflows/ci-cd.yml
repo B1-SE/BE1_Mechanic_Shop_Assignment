@@ -46,7 +46,12 @@ jobs:
       run: safety scan || true
     
     - name: Test with pytest
+      env:
+        SECRET_KEY: ${{ secrets.CI_SECRET_KEY }}
       run: |
+        if [ -z "${SECRET_KEY}" ]; then
+          export SECRET_KEY="ci-test-secret-key"
+        fi
         pytest tests/ -v --cov=app --cov-report=xml
     
     - name: Upload coverage reports
@@ -74,6 +79,3 @@ jobs:
 
         # Your Render API key.
         api-key: ${{ secrets.RENDER_API_KEY }}
-
-        # Optional: If true, the action will wait for the deployment to complete.
-        wait-for-deploy: 'true'
