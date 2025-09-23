@@ -6,11 +6,8 @@ Comprehensive test suite for Customer CRUD operations using Application Factory 
 import threading
 import time
 import requests
-import json
-import os
 from app import create_app
 from app.extensions import db
-from app.models import Customer
 
 
 def run_flask_app(app):
@@ -63,7 +60,7 @@ def test_customer_crud():
         print(f"Status Code: {response.status_code}")
         customers = response.json()
         print(f"Number of customers: {len(customers)}")
-        print(f"✅ READ all successful")
+        print("✅ READ all successful")
     except Exception as e:
         print(f"❌ READ all error: {e}")
     
@@ -75,7 +72,7 @@ def test_customer_crud():
         if response.status_code == 200:
             customer = response.json()
             print(f"Customer: {customer['first_name']} {customer['last_name']}")
-            print(f"✅ READ by ID successful")
+            print("✅ READ by ID successful")
         else:
             print("❌ READ by ID failed")
     except Exception as e:
@@ -95,7 +92,7 @@ def test_customer_crud():
         if response.status_code == 200:
             updated_customer = response.json()
             print(f"Updated Customer: {updated_customer['first_name']} {updated_customer['last_name']}")
-            print(f"✅ UPDATE successful")
+            print("✅ UPDATE successful")
         else:
             print("❌ UPDATE failed")
             print(f"Response: {response.text}")
@@ -108,7 +105,7 @@ def test_customer_crud():
         response = requests.delete(f"{BASE_URL}/customers/{customer_id}")
         print(f"Status Code: {response.status_code}")
         if response.status_code == 200:
-            print(f"✅ DELETE successful")
+            print("✅ DELETE successful")
         else:
             print("❌ DELETE failed")
             print(f"Response: {response.text}")
@@ -121,7 +118,7 @@ def test_customer_crud():
         response = requests.get(f"{BASE_URL}/customers/{customer_id}")
         print(f"Status Code: {response.status_code}")
         if response.status_code == 404:
-            print(f"✅ Customer properly deleted (404 expected)")
+            print("✅ Customer properly deleted (404 expected)")
         else:
             print("❌ Customer still exists after deletion")
     except Exception as e:
