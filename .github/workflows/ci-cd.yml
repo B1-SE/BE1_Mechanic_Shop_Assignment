@@ -66,4 +66,4 @@ jobs:
     - name: Deploy to Render
       run: curl $MY_API_URL
       env:
-        MY_API_URL: https://api.example.com/endpoint
+        MY_API_URL: https://be1-mechanic-shop-assignment.onrender.com
