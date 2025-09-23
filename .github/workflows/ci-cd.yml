@@ -41,7 +41,7 @@ jobs:
       run: bandit -r app/
 
     - name: Check for vulnerable dependencies with safety
-      run: safety check || true
+      run: safety scan || true
     
     - name: Test with pytest
       run: |
