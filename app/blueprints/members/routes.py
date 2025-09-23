@@ -101,9 +101,9 @@ def get_members():
         
         if is_active_filter is not None:
             if is_active_filter.lower() == 'true':
-                query = query.filter(Member.is_active == True)
+                query = query.filter(Member.is_active)
             elif is_active_filter.lower() == 'false':
-                query = query.filter(Member.is_active == False)
+                query = query.filter(~Member.is_active)
             else:
                 return jsonify({
                     'error': 'Invalid is_active value',

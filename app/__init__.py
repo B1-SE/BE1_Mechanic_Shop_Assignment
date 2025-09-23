@@ -56,6 +56,8 @@ def create_app(config_class=None):
             from app.models import (
                 customer, service_ticket, mechanic, inventory
             )
+            # Use imports to register models with SQLAlchemy
+            _ = customer, service_ticket, mechanic, inventory
         except ImportError as e:
             print(f"Warning: Could not import some models: {e}")
 
