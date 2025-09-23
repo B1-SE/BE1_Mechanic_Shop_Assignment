@@ -19,7 +19,9 @@ def generate_token(customer_id, email):
     }
 
     # Use the application's configured secret key
-    secret_key = os.environ.get("SECRET_KEY") or "super secret secrets"
+    secret_key = os.environ.get("SECRET_KEY")
+    if not secret_key:
+        raise ValueError("SECRET_KEY environment variable not set")
     token = jwt.encode(payload, secret_key, algorithm="HS256")
     return token
 
@@ -27,7 +29,9 @@ def generate_token(customer_id, email):
 def verify_token(token):
     """Verify and decode a JWT token"""
     try:
-        secret_key = os.environ.get("SECRET_KEY") or "super secret secrets"
+        secret_key = os.environ.get("SECRET_KEY")
+        if not secret_key:
+            raise ValueError("SECRET_KEY environment variable not set")
         payload = jwt.decode(token, secret_key, algorithms=["HS256"])
         return payload
     except jwt.ExpiredSignatureError:

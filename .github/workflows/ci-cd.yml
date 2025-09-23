@@ -26,11 +26,13 @@ jobs:
     
     - name: Install dependencies
       run: |
+        SECRET_KEY="${{ secrets.CI_SECRET_KEY }}"
+        if [ -z "$SECRET_KEY" ]; then
+          SECRET_KEY="ci-test-secret-key"
+        fi
+        export SECRET_KEY
         python -m pip install --upgrade pip
         pip install -r requirements-dev.txt
-      env:
-        # This is a placeholder for CI/CD tests; a real secret should be used in production
-        SECRET_KEY: ${{ secrets.CI_SECRET_KEY || 'ci-test-secret-key' }}
     
     - name: Lint with ruff
       run: |
@@ -63,7 +65,15 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Deploy to Render
-      run: curl $MY_API_URL
-      env:
-        MY_API_URL: https://be1-mechanic-shop-assignment.onrender.com
+    - name: Trigger Render Deployment
+      uses: johnbeynon/render-deploy-action@v0.0.8
+      with:
+        # The service ID of your Render service.
+        # You can find this in the URL of your service's dashboard page.
+        service-id: ${{ secrets.RENDER_SERVICE_ID }}
+
+        # Your Render API key.
+        api-key: ${{ secrets.RENDER_API_KEY }}
+
+        # Optional: If true, the action will wait for the deployment to complete.
+        wait-for-deploy: 'true'

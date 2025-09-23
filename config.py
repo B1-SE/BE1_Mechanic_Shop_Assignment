@@ -26,6 +26,9 @@ class Config:
     # Application settings
     JSON_SORT_KEYS = False
 
+    # Rate limiting config - using environment variable for Redis
+    RATELIMIT_STORAGE_URI = os.environ.get("REDIS_URL") or "memory://"
+
 
 class DevelopmentConfig(Config):
     """Development configuration."""
