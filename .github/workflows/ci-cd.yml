@@ -26,11 +26,6 @@ jobs:
     
     - name: Install dependencies
       run: |
-        SECRET_KEY="${{ secrets.CI_SECRET_KEY }}"
-        if [ -z "$SECRET_KEY" ]; then
-          SECRET_KEY="ci-test-secret-key"
-        fi
-        export SECRET_KEY
         python -m pip install --upgrade pip
         pip install -r requirements-dev.txt
     
@@ -47,12 +42,9 @@ jobs:
     
     - name: Test with pytest
       env:
-        SECRET_KEY: ${{ secrets.CI_SECRET_KEY }}
-      run: |
-        if [ -z "${SECRET_KEY}" ]; then
-          export SECRET_KEY="ci-test-secret-key"
-        fi
-        pytest tests/ -v --cov=app --cov-report=xml
+        # Provide a fallback key for tests if the GitHub secret is not set.
+        SECRET_KEY: ${{ secrets.CI_SECRET_KEY || 'a-secure-ci-test-secret-key' }}
+      run: pytest tests/ -v --cov=app --cov-report=xml
     
     - name: Upload coverage reports
       uses: codecov/codecov-action@v4
@@ -75,7 +67,7 @@ jobs:
       with:
         # The service ID of your Render service.
         # You can find this in the URL of your service's dashboard page.
-        service-id: ${{ secrets.SERVICE_ID_BE }}
+        service-id: ${{ secrets.RENDER_SERVICE_ID }}
 
         # Your Render API key.
-        api-key: ${{ secrets.API_KEY_BE }}
+        api-key: ${{ secrets.RENDER_API_KEY }}
