@@ -92,36 +92,22 @@ def paginate_results(query, page: int = 1, per_page: int = 10):
     Returns:
         dict: Pagination result with items and metadata
     """
-    try:
-        paginated = query.paginate(page=page, per_page=per_page, error_out=False)
+    paginated = query.paginate(page=page, per_page=per_page, error_out=False)
 
-        return {
-            "items": [
-                item.to_dict() if hasattr(item, "to_dict") else item
-                for item in paginated.items
-            ],
-            "page": page,
-            "per_page": per_page,
-            "total": paginated.total,
-            "pages": paginated.pages,
-            "has_next": paginated.has_next,
-            "has_prev": paginated.has_prev,
-            "next_page": paginated.next_num if paginated.has_next else None,
-            "prev_page": paginated.prev_num if paginated.has_prev else None,
-        }
-    except Exception as e:
-        return {
-            "items": [],
-            "page": page,
-            "per_page": per_page,
-            "total": 0,
-            "pages": 0,
-            "has_next": False,
-            "has_prev": False,
-            "next_page": None,
-            "prev_page": None,
-            "error": str(e),
-        }
+    return {
+        "items": [
+            item.to_dict() if hasattr(item, "to_dict") else item
+            for item in paginated.items
+        ],
+        "page": page,
+        "per_page": per_page,
+        "total": paginated.total,
+        "pages": paginated.pages,
+        "has_next": paginated.has_next,
+        "has_prev": paginated.has_prev,
+        "next_page": paginated.next_num if paginated.has_next else None,
+        "prev_page": paginated.prev_num if paginated.has_prev else None,
+    }
 
 
 def create_error_response(message: str, status_code: int = 400, details: Dict = None):
