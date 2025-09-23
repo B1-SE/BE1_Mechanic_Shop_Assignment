@@ -4,6 +4,10 @@ Application configuration settings.
 
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Build paths inside the project
 BASE_DIR = Path(__file__).resolve().parent
@@ -12,7 +16,7 @@ BASE_DIR = Path(__file__).resolve().parent
 class Config:
     """Base configuration class."""
     
-    # Basic Flask config
+    # Basic Flask config - using environment variable
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
     
     # SQLAlchemy config

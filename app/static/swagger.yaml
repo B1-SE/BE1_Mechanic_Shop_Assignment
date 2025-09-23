@@ -6,9 +6,9 @@ info:
   contact:
     name: "Mechanic Shop API Support"
     email: "support@mechanicshop.com"
-host: "127.0.0.1:5000"
+host: "be1-mechanic-shop-assignment.onrender.com"
 schemes:
-  - "http"
+  - "https"
 consumes:
   - "application/json"
 produces:
