@@ -75,7 +75,7 @@ jobs:
       with:
         # The service ID of your Render service.
         # You can find this in the URL of your service's dashboard page.
-        service-id: ${{ secrets.RENDER_SERVICE_ID }}
+        service-id: ${{ secrets.SERVICE_ID_BE }}
 
         # Your Render API key.
-        api-key: ${{ secrets.RENDER_API_KEY }}
+        api-key: ${{ secrets.API_KEY_BE }}
