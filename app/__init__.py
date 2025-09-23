@@ -313,13 +313,16 @@ def register_additional_routes(app):
         Test endpoint to demonstrate rate limiting.
         Limited to 5 requests per minute per IP.
         """
-        return jsonify(
-            {
-                "message": "Rate limiting is working!",
-                "limit": "5 requests per minute",
-                "timestamp": datetime.now().isoformat(),
-            }
-        ), 200
+        return (
+            jsonify(
+                {
+                    "message": "Rate limiting is working!",
+                    "limit": "5 requests per minute",
+                    "timestamp": datetime.now().isoformat(),
+                }
+            ),
+            200,
+        )
 
     # Favicon endpoint
     @app.route("/favicon.ico")

@@ -222,18 +222,22 @@ def edit_ticket_mechanics(ticket_id):
         elif not changes_made and errors:
             return jsonify(response_data), 400  # Bad Request (no changes made)
         else:
-            return jsonify(
-                {
-                    "message": "No changes requested",
-                    "service_ticket": service_ticket_schema.dump(service_ticket),
-                }
-            ), 200
+            return (
+                jsonify(
+                    {
+                        "message": "No changes requested",
+                        "service_ticket": service_ticket_schema.dump(service_ticket),
+                    }
+                ),
+                200,
+            )
 
     except Exception as e:
         db.session.rollback()
-        return jsonify(
-            {"error": "Failed to edit ticket mechanics", "message": str(e)}
-        ), 500
+        return (
+            jsonify({"error": "Failed to edit ticket mechanics", "message": str(e)}),
+            500,
+        )
 
 
 @service_tickets_bp.route(
@@ -259,19 +263,23 @@ def assign_mechanic_to_ticket(ticket_id, mechanic_id):
 
     # Check if mechanic is already assigned
     if mechanic in service_ticket.mechanics:
-        return jsonify(
-            {"message": "Mechanic already assigned to this service ticket"}
-        ), 400
+        return (
+            jsonify({"message": "Mechanic already assigned to this service ticket"}),
+            400,
+        )
 
     try:
         service_ticket.mechanics.append(mechanic)
         db.session.commit()
-        return jsonify(
-            {
-                "message": f"Mechanic {mechanic.name} assigned to service ticket {ticket_id}",
-                "service_ticket": service_ticket_schema.dump(service_ticket),
-            }
-        ), 200
+        return (
+            jsonify(
+                {
+                    "message": f"Mechanic {mechanic.name} assigned to service ticket {ticket_id}",
+                    "service_ticket": service_ticket_schema.dump(service_ticket),
+                }
+            ),
+            200,
+        )
     except Exception as e:
         db.session.rollback()
         return jsonify({"message": str(e)}), 500
@@ -292,19 +300,23 @@ def remove_mechanic_from_ticket(ticket_id, mechanic_id):
 
     # Check if mechanic is assigned to this ticket
     if mechanic not in service_ticket.mechanics:
-        return jsonify(
-            {"message": "Mechanic is not assigned to this service ticket"}
-        ), 400
+        return (
+            jsonify({"message": "Mechanic is not assigned to this service ticket"}),
+            400,
+        )
 
     try:
         service_ticket.mechanics.remove(mechanic)
         db.session.commit()
-        return jsonify(
-            {
-                "message": f"Mechanic {mechanic.name} removed from service ticket {ticket_id}",
-                "service_ticket": service_ticket_schema.dump(service_ticket),
-            }
-        ), 200
+        return (
+            jsonify(
+                {
+                    "message": f"Mechanic {mechanic.name} removed from service ticket {ticket_id}",
+                    "service_ticket": service_ticket_schema.dump(service_ticket),
+                }
+            ),
+            200,
+        )
     except Exception as e:
         db.session.rollback()
         return jsonify({"message": str(e)}), 500
@@ -336,9 +348,10 @@ def add_inventory_to_ticket(ticket_id):
 
         # Validate that inventory_ids is a list
         if not isinstance(inventory_ids, list):
-            return jsonify(
-                {"error": "inventory_ids must be a list of inventory IDs"}
-            ), 400
+            return (
+                jsonify({"error": "inventory_ids must be a list of inventory IDs"}),
+                400,
+            )
 
         changes_made = []
         errors = []
@@ -382,18 +395,22 @@ def add_inventory_to_ticket(ticket_id):
         elif not changes_made and errors:
             return jsonify(response_data), 400  # Bad Request (no changes made)
         else:
-            return jsonify(
-                {
-                    "message": "No changes requested",
-                    "service_ticket": service_ticket_schema.dump(service_ticket),
-                }
-            ), 200
+            return (
+                jsonify(
+                    {
+                        "message": "No changes requested",
+                        "service_ticket": service_ticket_schema.dump(service_ticket),
+                    }
+                ),
+                200,
+            )
 
     except Exception as e:
         db.session.rollback()
-        return jsonify(
-            {"error": "Failed to add inventory to ticket", "message": str(e)}
-        ), 500
+        return (
+            jsonify({"error": "Failed to add inventory to ticket", "message": str(e)}),
+            500,
+        )
 
 
 @service_tickets_bp.route("/<int:ticket_id>/inventory", methods=["DELETE"])
@@ -422,9 +439,10 @@ def remove_inventory_from_ticket(ticket_id):
 
         # Validate that inventory_ids is a list
         if not isinstance(inventory_ids, list):
-            return jsonify(
-                {"error": "inventory_ids must be a list of inventory IDs"}
-            ), 400
+            return (
+                jsonify({"error": "inventory_ids must be a list of inventory IDs"}),
+                400,
+            )
 
         changes_made = []
         errors = []
@@ -468,18 +486,24 @@ def remove_inventory_from_ticket(ticket_id):
         elif not changes_made and errors:
             return jsonify(response_data), 400  # Bad Request (no changes made)
         else:
-            return jsonify(
-                {
-                    "message": "No changes requested",
-                    "service_ticket": service_ticket_schema.dump(service_ticket),
-                }
-            ), 200
+            return (
+                jsonify(
+                    {
+                        "message": "No changes requested",
+                        "service_ticket": service_ticket_schema.dump(service_ticket),
+                    }
+                ),
+                200,
+            )
 
     except Exception as e:
         db.session.rollback()
-        return jsonify(
-            {"error": "Failed to remove inventory from ticket", "message": str(e)}
-        ), 500
+        return (
+            jsonify(
+                {"error": "Failed to remove inventory from ticket", "message": str(e)}
+            ),
+            500,
+        )
 
 
 @service_tickets_bp.route(
@@ -497,19 +521,23 @@ def add_single_inventory_to_ticket(ticket_id, inventory_id):
 
     # Check if inventory item is already added
     if inventory_item in service_ticket.inventory_parts:
-        return jsonify(
-            {"message": "Inventory item already added to this service ticket"}
-        ), 400
+        return (
+            jsonify({"message": "Inventory item already added to this service ticket"}),
+            400,
+        )
 
     try:
         service_ticket.inventory_parts.append(inventory_item)
         db.session.commit()
-        return jsonify(
-            {
-                "message": f"Inventory item {inventory_item.name} added to service ticket {ticket_id}",
-                "service_ticket": service_ticket_schema.dump(service_ticket),
-            }
-        ), 200
+        return (
+            jsonify(
+                {
+                    "message": f"Inventory item {inventory_item.name} added to service ticket {ticket_id}",
+                    "service_ticket": service_ticket_schema.dump(service_ticket),
+                }
+            ),
+            200,
+        )
     except Exception as e:
         db.session.rollback()
         return jsonify({"message": str(e)}), 500
@@ -530,19 +558,25 @@ def remove_single_inventory_from_ticket(ticket_id, inventory_id):
 
     # Check if inventory item is assigned to this ticket
     if inventory_item not in service_ticket.inventory_parts:
-        return jsonify(
-            {"message": "Inventory item is not assigned to this service ticket"}
-        ), 400
+        return (
+            jsonify(
+                {"message": "Inventory item is not assigned to this service ticket"}
+            ),
+            400,
+        )
 
     try:
         service_ticket.inventory_parts.remove(inventory_item)
         db.session.commit()
-        return jsonify(
-            {
-                "message": f"Inventory item {inventory_item.name} removed from service ticket {ticket_id}",
-                "service_ticket": service_ticket_schema.dump(service_ticket),
-            }
-        ), 200
+        return (
+            jsonify(
+                {
+                    "message": f"Inventory item {inventory_item.name} removed from service ticket {ticket_id}",
+                    "service_ticket": service_ticket_schema.dump(service_ticket),
+                }
+            ),
+            200,
+        )
     except Exception as e:
         db.session.rollback()
         return jsonify({"message": str(e)}), 500

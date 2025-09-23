@@ -114,9 +114,10 @@ def update_inventory(current_user, id):
     if "name" in inventory_data and inventory_data["name"] != inventory_item.name:
         existing_item = Inventory.query.filter_by(name=inventory_data["name"]).first()
         if existing_item:
-            return jsonify(
-                {"error": "Inventory item with this name already exists"}
-            ), 409
+            return (
+                jsonify({"error": "Inventory item with this name already exists"}),
+                409,
+            )
 
     # Update fields
     if "name" in inventory_data:

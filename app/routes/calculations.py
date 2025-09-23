@@ -37,13 +37,16 @@ def add_numbers():
         # Calculate sum
         result = sum(numbers)
 
-        return jsonify(
-            {
-                "result": result,
-                "operation": "addition",
-                "operands": numbers,  # Changed from 'numbers' to 'operands'
-            }
-        ), 200
+        return (
+            jsonify(
+                {
+                    "result": result,
+                    "operation": "addition",
+                    "operands": numbers,  # Changed from 'numbers' to 'operands'
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -79,13 +82,16 @@ def subtract_numbers():
         for num in numbers[1:]:
             result -= num
 
-        return jsonify(
-            {
-                "result": result,
-                "operation": "subtraction",
-                "operands": numbers,  # Changed from 'numbers' to 'operands'
-            }
-        ), 200
+        return (
+            jsonify(
+                {
+                    "result": result,
+                    "operation": "subtraction",
+                    "operands": numbers,  # Changed from 'numbers' to 'operands'
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -121,13 +127,16 @@ def multiply_numbers():
         for num in numbers:
             result *= num
 
-        return jsonify(
-            {
-                "result": result,
-                "operation": "multiplication",
-                "operands": numbers,  # Changed from 'numbers' to 'operands'
-            }
-        ), 200
+        return (
+            jsonify(
+                {
+                    "result": result,
+                    "operation": "multiplication",
+                    "operands": numbers,  # Changed from 'numbers' to 'operands'
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -168,13 +177,16 @@ def divide_numbers():
         for num in numbers[1:]:
             result /= num
 
-        return jsonify(
-            {
-                "result": result,
-                "operation": "division",
-                "operands": numbers,  # Changed from 'numbers' to 'operands'
-            }
-        ), 200
+        return (
+            jsonify(
+                {
+                    "result": result,
+                    "operation": "division",
+                    "operands": numbers,  # Changed from 'numbers' to 'operands'
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -183,16 +195,19 @@ def divide_numbers():
 @calculations_bp.route("/health", methods=["GET"])
 def health_check():
     """Health check endpoint for calculations service"""
-    return jsonify(
-        {
-            "status": "healthy",
-            "service": "calculations",
-            "endpoints": [
-                "/add",
-                "/subtract",
-                "/multiply",
-                "/divide",
-            ],  # Added this field
-            "available_operations": ["add", "subtract", "multiply", "divide"],
-        }
-    ), 200
+    return (
+        jsonify(
+            {
+                "status": "healthy",
+                "service": "calculations",
+                "endpoints": [
+                    "/add",
+                    "/subtract",
+                    "/multiply",
+                    "/divide",
+                ],  # Added this field
+                "available_operations": ["add", "subtract", "multiply", "divide"],
+            }
+        ),
+        200,
+    )

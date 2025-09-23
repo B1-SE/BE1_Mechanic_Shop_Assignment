@@ -37,10 +37,14 @@ class Mechanic(db.Model):
             "email": self.email,
             "phone": self.phone,
             "salary": float(self.salary) if self.salary else None,
-            "created_at": self.created_at.isoformat()
-            if hasattr(self, "created_at") and self.created_at
-            else None,
-            "updated_at": self.updated_at.isoformat()
-            if hasattr(self, "updated_at") and self.updated_at
-            else None,
+            "created_at": (
+                self.created_at.isoformat()
+                if hasattr(self, "created_at") and self.created_at
+                else None
+            ),
+            "updated_at": (
+                self.updated_at.isoformat()
+                if hasattr(self, "updated_at") and self.updated_at
+                else None
+            ),
         }

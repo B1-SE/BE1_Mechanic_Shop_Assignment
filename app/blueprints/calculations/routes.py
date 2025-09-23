@@ -15,30 +15,39 @@ def add_numbers():
         numbers = data["numbers"]
 
         if not isinstance(numbers, list) or len(numbers) < 2:
-            return jsonify(
-                {"error": 'Field "numbers" must be an array with at least 2 numbers'}
-            ), 400
+            return (
+                jsonify(
+                    {
+                        "error": 'Field "numbers" must be an array with at least 2 numbers'
+                    }
+                ),
+                400,
+            )
 
         # Validate each number
         for i, num in enumerate(numbers):
             if not isinstance(num, (int, float)):
-                return jsonify(
-                    {"error": f"Number at index {i} must be a valid number"}
-                ), 400
+                return (
+                    jsonify({"error": f"Number at index {i} must be a valid number"}),
+                    400,
+                )
 
         result = sum(numbers)
 
-        return jsonify(
-            {
-                "operation": "addition",
-                "operands": numbers,
-                "result": result,
-                "calculation": " + ".join(map(str, numbers)) + f" = {result}",
-                "timestamp": datetime.now(timezone.utc)
-                .isoformat()
-                .replace("+00:00", "Z"),
-            }
-        ), 200
+        return (
+            jsonify(
+                {
+                    "operation": "addition",
+                    "operands": numbers,
+                    "result": result,
+                    "calculation": " + ".join(map(str, numbers)) + f" = {result}",
+                    "timestamp": datetime.now(timezone.utc)
+                    .isoformat()
+                    .replace("+00:00", "Z"),
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         return jsonify({"error": "Internal server error", "details": str(e)}), 500
@@ -56,16 +65,22 @@ def subtract_numbers():
         numbers = data["numbers"]
 
         if not isinstance(numbers, list) or len(numbers) < 2:
-            return jsonify(
-                {"error": 'Field "numbers" must be an array with at least 2 numbers'}
-            ), 400
+            return (
+                jsonify(
+                    {
+                        "error": 'Field "numbers" must be an array with at least 2 numbers'
+                    }
+                ),
+                400,
+            )
 
         # Validate each number
         for i, num in enumerate(numbers):
             if not isinstance(num, (int, float)):
-                return jsonify(
-                    {"error": f"Number at index {i} must be a valid number"}
-                ), 400
+                return (
+                    jsonify({"error": f"Number at index {i} must be a valid number"}),
+                    400,
+                )
 
         result = numbers[0]
         for num in numbers[1:]:
@@ -76,17 +91,20 @@ def subtract_numbers():
             calc_string += f" - {num}"
         calc_string += f" = {result}"
 
-        return jsonify(
-            {
-                "operation": "subtraction",
-                "operands": numbers,
-                "result": result,
-                "calculation": calc_string,
-                "timestamp": datetime.now(timezone.utc)
-                .isoformat()
-                .replace("+00:00", "Z"),
-            }
-        ), 200
+        return (
+            jsonify(
+                {
+                    "operation": "subtraction",
+                    "operands": numbers,
+                    "result": result,
+                    "calculation": calc_string,
+                    "timestamp": datetime.now(timezone.utc)
+                    .isoformat()
+                    .replace("+00:00", "Z"),
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         return jsonify({"error": "Internal server error", "details": str(e)}), 500
@@ -104,32 +122,41 @@ def multiply_numbers():
         numbers = data["numbers"]
 
         if not isinstance(numbers, list) or len(numbers) < 2:
-            return jsonify(
-                {"error": 'Field "numbers" must be an array with at least 2 numbers'}
-            ), 400
+            return (
+                jsonify(
+                    {
+                        "error": 'Field "numbers" must be an array with at least 2 numbers'
+                    }
+                ),
+                400,
+            )
 
         # Validate each number
         for i, num in enumerate(numbers):
             if not isinstance(num, (int, float)):
-                return jsonify(
-                    {"error": f"Number at index {i} must be a valid number"}
-                ), 400
+                return (
+                    jsonify({"error": f"Number at index {i} must be a valid number"}),
+                    400,
+                )
 
         result = 1
         for num in numbers:
             result *= num
 
-        return jsonify(
-            {
-                "operation": "multiplication",
-                "operands": numbers,
-                "result": result,
-                "calculation": " × ".join(map(str, numbers)) + f" = {result}",
-                "timestamp": datetime.now(timezone.utc)
-                .isoformat()
-                .replace("+00:00", "Z"),
-            }
-        ), 200
+        return (
+            jsonify(
+                {
+                    "operation": "multiplication",
+                    "operands": numbers,
+                    "result": result,
+                    "calculation": " × ".join(map(str, numbers)) + f" = {result}",
+                    "timestamp": datetime.now(timezone.utc)
+                    .isoformat()
+                    .replace("+00:00", "Z"),
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         return jsonify({"error": "Internal server error", "details": str(e)}), 500
@@ -147,16 +174,22 @@ def divide_numbers():
         numbers = data["numbers"]
 
         if not isinstance(numbers, list) or len(numbers) < 2:
-            return jsonify(
-                {"error": 'Field "numbers" must be an array with at least 2 numbers'}
-            ), 400
+            return (
+                jsonify(
+                    {
+                        "error": 'Field "numbers" must be an array with at least 2 numbers'
+                    }
+                ),
+                400,
+            )
 
         # Validate each number
         for i, num in enumerate(numbers):
             if not isinstance(num, (int, float)):
-                return jsonify(
-                    {"error": f"Number at index {i} must be a valid number"}
-                ), 400
+                return (
+                    jsonify({"error": f"Number at index {i} must be a valid number"}),
+                    400,
+                )
 
         # Check for division by zero
         for i, num in enumerate(numbers[1:], 1):
@@ -172,17 +205,20 @@ def divide_numbers():
             calc_string += f" ÷ {num}"
         calc_string += f" = {result}"
 
-        return jsonify(
-            {
-                "operation": "division",
-                "operands": numbers,
-                "result": result,
-                "calculation": calc_string,
-                "timestamp": datetime.now(timezone.utc)
-                .isoformat()
-                .replace("+00:00", "Z"),
-            }
-        ), 200
+        return (
+            jsonify(
+                {
+                    "operation": "division",
+                    "operands": numbers,
+                    "result": result,
+                    "calculation": calc_string,
+                    "timestamp": datetime.now(timezone.utc)
+                    .isoformat()
+                    .replace("+00:00", "Z"),
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         return jsonify({"error": "Internal server error", "details": str(e)}), 500
@@ -191,15 +227,18 @@ def divide_numbers():
 @calculations_bp.route("/health", methods=["GET"])
 def calculations_health():
     """Health check for calculations service"""
-    return jsonify(
-        {
-            "service": "calculations",
-            "status": "healthy",
-            "endpoints": [
-                "POST /calculations/add",
-                "POST /calculations/subtract",
-                "POST /calculations/multiply",
-                "POST /calculations/divide",
-            ],
-        }
-    ), 200
+    return (
+        jsonify(
+            {
+                "service": "calculations",
+                "status": "healthy",
+                "endpoints": [
+                    "POST /calculations/add",
+                    "POST /calculations/subtract",
+                    "POST /calculations/multiply",
+                    "POST /calculations/divide",
+                ],
+            }
+        ),
+        200,
+    )

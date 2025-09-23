@@ -151,13 +151,16 @@ def member_login():
 
         token = generate_token(customer.id, customer.email)
 
-        return jsonify(
-            {
-                "message": "Login successful",
-                "member": customer_schema.dump(customer),
-                "token": token,
-            }
-        ), 200
+        return (
+            jsonify(
+                {
+                    "message": "Login successful",
+                    "member": customer_schema.dump(customer),
+                    "token": token,
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

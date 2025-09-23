@@ -38,9 +38,10 @@ def create_member():
         # Check if email already exists
         existing_member = Member.query.filter_by(email=member_data["email"]).first()
         if existing_member:
-            return jsonify(
-                {"error": "Email already associated with another member"}
-            ), 400
+            return (
+                jsonify({"error": "Email already associated with another member"}),
+                400,
+            )
 
         # Create new member
         new_member = Member(
@@ -61,12 +62,15 @@ def create_member():
         # Clear the cached members list since we added a new member
         cache.delete("all_members")
 
-        return jsonify(
-            {
-                "message": "Member created successfully",
-                "member": member_response_schema.dump(new_member),
-            }
-        ), 201
+        return (
+            jsonify(
+                {
+                    "message": "Member created successfully",
+                    "member": member_response_schema.dump(new_member),
+                }
+            ),
+            201,
+        )
 
     except ValidationError as err:
         return jsonify({"error": "Validation failed", "details": err.messages}), 400
@@ -101,12 +105,15 @@ def get_members():
         # Apply filters
         if role_filter:
             if role_filter not in ["member", "admin", "manager"]:
-                return jsonify(
-                    {
-                        "error": "Invalid role",
-                        "message": "role must be one of: member, admin, manager",
-                    }
-                ), 400
+                return (
+                    jsonify(
+                        {
+                            "error": "Invalid role",
+                            "message": "role must be one of: member, admin, manager",
+                        }
+                    ),
+                    400,
+                )
             query = query.filter(Member.role == role_filter)
 
         if is_active_filter is not None:
@@ -115,12 +122,15 @@ def get_members():
             elif is_active_filter.lower() == "false":
                 query = query.filter(~Member.is_active)
             else:
-                return jsonify(
-                    {
-                        "error": "Invalid is_active value",
-                        "message": 'is_active must be "true" or "false"',
-                    }
-                ), 400
+                return (
+                    jsonify(
+                        {
+                            "error": "Invalid is_active value",
+                            "message": 'is_active must be "true" or "false"',
+                        }
+                    ),
+                    400,
+                )
 
         # Execute query
         members = query.all()
@@ -179,9 +189,10 @@ def update_member(member_id):
         if "email" in member_data and member_data["email"] != member.email:
             existing_member = Member.query.filter_by(email=member_data["email"]).first()
             if existing_member:
-                return jsonify(
-                    {"error": "Email already associated with another member"}
-                ), 400
+                return (
+                    jsonify({"error": "Email already associated with another member"}),
+                    400,
+                )
 
         # Update member attributes
         for key, value in member_data.items():
@@ -195,12 +206,15 @@ def update_member(member_id):
         # Clear the cached members list since we updated a member
         cache.delete("all_members")
 
-        return jsonify(
-            {
-                "message": "Member updated successfully",
-                "member": member_response_schema.dump(member),
-            }
-        ), 200
+        return (
+            jsonify(
+                {
+                    "message": "Member updated successfully",
+                    "member": member_response_schema.dump(member),
+                }
+            ),
+            200,
+        )
 
     except ValidationError as err:
         return jsonify({"error": "Validation failed", "details": err.messages}), 400
@@ -231,9 +245,15 @@ def delete_member(member_id):
         # Clear the cached members list since we deleted a member
         cache.delete("all_members")
 
-        return jsonify(
-            {"message": "Member deleted successfully", "deleted_member": member_info}
-        ), 200
+        return (
+            jsonify(
+                {
+                    "message": "Member deleted successfully",
+                    "deleted_member": member_info,
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         db.session.rollback()
@@ -243,16 +263,19 @@ def delete_member(member_id):
 @members_bp.route("/roles", methods=["GET"])
 def get_member_roles():
     """Get available member roles."""
-    return jsonify(
-        {
-            "roles": ["member", "admin", "manager"],
-            "descriptions": {
-                "member": "Standard member with basic access",
-                "admin": "Administrator with full system access",
-                "manager": "Manager with elevated permissions",
-            },
-        }
-    ), 200
+    return (
+        jsonify(
+            {
+                "roles": ["member", "admin", "manager"],
+                "descriptions": {
+                    "member": "Standard member with basic access",
+                    "admin": "Administrator with full system access",
+                    "manager": "Manager with elevated permissions",
+                },
+            }
+        ),
+        200,
+    )
 
 
 @members_bp.route("/by-role/<role>", methods=["GET"])
@@ -260,24 +283,31 @@ def get_members_by_role(role):
     """Get all members with a specific role."""
     try:
         if role not in ["member", "admin", "manager"]:
-            return jsonify(
-                {
-                    "error": "Invalid role",
-                    "message": "role must be one of: member, admin, manager",
-                }
-            ), 400
+            return (
+                jsonify(
+                    {
+                        "error": "Invalid role",
+                        "message": "role must be one of: member, admin, manager",
+                    }
+                ),
+                400,
+            )
 
         members = Member.query.filter_by(role=role).all()
 
-        return jsonify(
-            {
-                "role": role,
-                "members": members_response_schema.dump(members),
-                "count": len(members),
-            }
-        ), 200
+        return (
+            jsonify(
+                {
+                    "role": role,
+                    "members": members_response_schema.dump(members),
+                    "count": len(members),
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
-        return jsonify(
-            {"error": "Failed to retrieve members by role", "message": str(e)}
-        ), 500
+        return (
+            jsonify({"error": "Failed to retrieve members by role", "message": str(e)}),
+            500,
+        )

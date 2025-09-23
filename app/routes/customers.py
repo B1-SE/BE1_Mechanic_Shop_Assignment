@@ -183,13 +183,16 @@ def login():
         # Generate proper JWT token - fix this line to include email
         token = generate_token(customer.id, customer.email)
 
-        return jsonify(
-            {
-                "message": "Login successful",
-                "customer": customer_schema.dump(customer),
-                "token": token,
-            }
-        ), 200
+        return (
+            jsonify(
+                {
+                    "message": "Login successful",
+                    "customer": customer_schema.dump(customer),
+                    "token": token,
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         print(f"Login error: {str(e)}")  # Debug logging

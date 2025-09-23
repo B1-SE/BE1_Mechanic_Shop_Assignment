@@ -35,9 +35,10 @@ def create_mechanic():
             email=mechanic_data["email"]
         ).first()
         if existing_mechanic:
-            return jsonify(
-                {"error": "Email already associated with another mechanic"}
-            ), 400
+            return (
+                jsonify({"error": "Email already associated with another mechanic"}),
+                400,
+            )
 
         # Create new mechanic from the dictionary
         new_mechanic = Mechanic(**mechanic_data)
@@ -77,9 +78,15 @@ def get_mechanics_by_workload():
 
         # Validate order parameter
         if order not in ["asc", "desc"]:
-            return jsonify(
-                {"error": "Invalid order", "message": 'order must be "asc" or "desc"'}
-            ), 400
+            return (
+                jsonify(
+                    {
+                        "error": "Invalid order",
+                        "message": 'order must be "asc" or "desc"',
+                    }
+                ),
+                400,
+            )
 
         # Build subquery to count tickets per mechanic
         # Using a subquery approach for better compatibility
@@ -120,9 +127,12 @@ def get_mechanics_by_workload():
         return jsonify(response_data), 200
 
     except Exception as e:
-        return jsonify(
-            {"error": "Failed to retrieve mechanics by workload", "message": str(e)}
-        ), 500
+        return (
+            jsonify(
+                {"error": "Failed to retrieve mechanics by workload", "message": str(e)}
+            ),
+            500,
+        )
 
 
 @mechanics_bp.route("/", methods=["GET"])

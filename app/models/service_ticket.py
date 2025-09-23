@@ -45,13 +45,13 @@ class ServiceTicket(db.Model):
             "description": self.description,
             "status": self.status,
             "priority": self.priority,
-            "estimated_cost": float(self.estimated_cost)
-            if self.estimated_cost
-            else None,
+            "estimated_cost": (
+                float(self.estimated_cost) if self.estimated_cost else None
+            ),
             "actual_cost": float(self.actual_cost) if self.actual_cost else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-            "completed_at": self.completed_at.isoformat()
-            if self.completed_at
-            else None,
+            "completed_at": (
+                self.completed_at.isoformat() if self.completed_at else None
+            ),
         }
