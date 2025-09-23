@@ -13,10 +13,7 @@ from flask_cors import CORS
 # Initialize extensions
 db = SQLAlchemy()
 ma = Marshmallow()
-limiter = Limiter(
-    key_func=get_remote_address,
-    default_limits=["1000 per hour"]
-)
+limiter = Limiter(key_func=get_remote_address, default_limits=["1000 per hour"])
 cache = Cache()
 jwt = JWTManager()
 cors = CORS()

@@ -10,15 +10,15 @@ from app.extensions import db
 
 class MemberSchema(SQLAlchemyAutoSchema):
     """Member schema for serialization/deserialization"""
-    
+
     class Meta:
         model = Member
         sqla_session = db.session
         load_instance = True
-    
+
     # Add validation
     customer_id = fields.Int(required=True)
-    membership_type = fields.Str(validate=validate.OneOf(['basic', 'premium', 'vip']))
+    membership_type = fields.Str(validate=validate.OneOf(["basic", "premium", "vip"]))
     points = fields.Int(validate=validate.Range(min=0))
 
 
