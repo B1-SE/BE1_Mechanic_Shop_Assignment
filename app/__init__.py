@@ -53,8 +53,11 @@ def create_app(config_class=None):
         inspector = inspect(db.engine)
         # Import models to ensure they are registered with SQLAlchemy
         try:
-            from app.models import (  # noqa: F401
-                customer, service_ticket, mechanic, inventory
+            from app.models import (
+                customer,  # noqa: F401
+                service_ticket,  # noqa: F401
+                mechanic,  # noqa: F401
+                inventory  # noqa: F401
             )
         except ImportError as e:
             print(f"Warning: Could not import some models: {e}")
