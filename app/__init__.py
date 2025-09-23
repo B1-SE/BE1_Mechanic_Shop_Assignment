@@ -85,103 +85,70 @@ def setup_swagger(app):
         return
 
     try:
-        from flask_swagger import swagger
-        from flask_swagger_ui import get_swaggerui_blueprint
+        # Use flasgger instead of flask_swagger
+        from flasgger import Swagger
 
-        # Dynamically set host and schemes for Swagger
         host = "localhost:5000"
         schemes = ["http"]
         if not app.config.get("DEBUG", False):
-            # Replace with your actual Render domain
             host = (
                 os.environ.get("RENDER_EXTERNAL_HOSTNAME")
                 or "mechanic-shop.onrender.com"
             )
             schemes = ["https"]
 
-        # Swagger configuration
-        @app.route("/spec")
-        def spec():
-            swag = swagger(
-                app,
-                template={
-                    "swagger": "2.0",
-                    "info": {
-                        "title": "Mechanic Shop Management API",
-                        "description": (
-                            "A comprehensive API for managing a mechanic shop's "
-                            "operations including customers, mechanics, service "
-                            "tickets, inventory, and memberships."
-                        ),
-                        "version": "1.0.0",
-                        "contact": {
-                            "name": "API Support",
-                            "email": "support@mechanicshop.com",
-                        },
-                    },
-                    "host": host,
-                    "basePath": "/",
-                    "schemes": schemes,
-                    "securityDefinitions": {
-                        "Bearer": {
-                            "type": "apiKey",
-                            "name": "Authorization",
-                            "in": "header",
-                            "description": (
-                                "JWT Authorization header using the Bearer scheme. "
-                                "Example: 'Authorization: Bearer {token}'"
-                            ),
-                        }
-                    },
-                    "tags": [
-                        {
-                            "name": "customers",
-                            "description": "Customer management operations",
-                        },
-                        {
-                            "name": "mechanics",
-                            "description": "Mechanic management operations",
-                        },
-                        {
-                            "name": "service-tickets",
-                            "description": "Service ticket management operations",
-                        },
-                        {
-                            "name": "inventory",
-                            "description": "Inventory management operations",
-                        },
-                        {
-                            "name": "members",
-                            "description": "Membership management operations",
-                        },
-                        {
-                            "name": "calculations",
-                            "description": "Mathematical calculation operations",
-                        },
-                    ],
+        swagger_template = {
+            "swagger": "2.0",
+            "info": {
+                "title": "Mechanic Shop Management API",
+                "description": (
+                    "A comprehensive API for managing a mechanic shop's "
+                    "operations including customers, mechanics, service "
+                    "tickets, inventory, and memberships."
+                ),
+                "version": "1.0.0",
+                "contact": {
+                    "name": "API Support",
+                    "email": "support@mechanicshop.com",
                 },
-            )
-            return jsonify(swag)
+            },
+            "host": host,
+            "basePath": "/",
+            "schemes": schemes,
+            "securityDefinitions": {
+                "Bearer": {
+                    "type": "apiKey",
+                    "name": "Authorization",
+                    "in": "header",
+                    "description": (
+                        "JWT Authorization header using the Bearer scheme. "
+                        "Example: 'Authorization: Bearer {token}'"
+                    ),
+                }
+            },
+            "tags": [
+                {"name": "customers", "description": "Customer management operations"},
+                {"name": "mechanics", "description": "Mechanic management operations"},
+                {
+                    "name": "service-tickets",
+                    "description": "Service ticket management operations",
+                },
+                {"name": "inventory", "description": "Inventory management operations"},
+                {"name": "members", "description": "Membership management operations"},
+                {
+                    "name": "calculations",
+                    "description": "Mathematical calculation operations",
+                },
+            ],
+        }
 
-        # Swagger UI configuration
-        SWAGGER_URL = "/docs"
-        API_URL = "/spec"
-
-        # Check if the blueprint is already registered
-        if "swagger_ui" not in [bp.name for bp in app.blueprints.values()]:
-            swaggerui_blueprint = get_swaggerui_blueprint(
-                SWAGGER_URL,
-                API_URL,
-                config={"app_name": "Mechanic Shop Management API"},
-            )
-            app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
-            _swagger_registered = True
+        Swagger(app, template=swagger_template)
+        _swagger_registered = True
 
     except ImportError:
         # Swagger packages not installed, skip swagger setup
         pass
     except Exception as e:
-        # Log the error but don't crash the app
         print(f"Warning: Could not set up Swagger: {e}")
 
 
@@ -370,3 +337,5 @@ def register_additional_routes(app):
                 },
             ],
         }, 200
+
+    return app
