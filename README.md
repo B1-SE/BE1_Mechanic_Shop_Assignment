@@ -1,6 +1,6 @@
 # Mechanic Shop API - Application Factory Pattern
 
-## 🏗️ Project Structure
+## 🏗️ Project Structure  
 
 Your BE_1_Assignment has been successfully refactored using the **Application Factory Pattern**. Here's the new structure:
 
