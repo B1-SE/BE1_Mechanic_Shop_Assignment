@@ -62,11 +62,8 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Deploy to Render
-      run: |
-        echo "🚀 Deploying to Render..."
-        curl --request POST \
-          --url https://api.render.com/v1/services/${{ secrets.SERVICE_ID_BE }}/deploys \
-          --header "Authorization: Bearer ${{ secrets.RENDER_API_KEY_BE }}"
-        echo "✅ Deployment triggered successfully!"
+      run: curl $MY_API_URL
+      env:
+        MY_API_URL: https://api.example.com/endpoint
