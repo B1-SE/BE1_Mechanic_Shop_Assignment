@@ -4,6 +4,7 @@ General utility functions for the mechanic shop application.
 
 import re
 from typing import Any, Dict
+import random
 from datetime import datetime
 from flask import jsonify
 
@@ -222,12 +223,8 @@ def generate_service_ticket_number() -> str:
     Returns:
         str: Service ticket number in format ST-YYYYMMDD-XXXX
     """
-    from datetime import datetime
-    import random
-
     date_part = datetime.now().strftime("%Y%m%d")
-    random_part = str(random.randint(1000, 9999))
-
+    random_part = str(random.randint(1000, 9999))  # nosec B311
     return f"ST-{date_part}-{random_part}"
 
 
