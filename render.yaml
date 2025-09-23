@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: mechanic-shop-api
+    env: python
+    runtime: python-3.11.9
+    buildCommand: pip install -r requirements.txt
+    startCommand: ./start.sh
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: PYTHON_VERSION
+        value: 3.11.9
