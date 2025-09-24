@@ -1072,6 +1072,46 @@ paths:
         429:
           description: "Rate limit exceeded"
 
+  /service-tickets/{id}/edit:
+    put:
+      tags:
+        - "Service Tickets"
+      summary: "Bulk edit mechanics on a ticket"
+      description: "Bulk add and remove mechanics from a service ticket."
+      parameters:
+        - in: path
+          name: id
+          type: integer
+          required: true
+          description: "The ID of the service ticket to edit."
+        - in: body
+          name: mechanic_ids
+          required: true
+          schema:
+            type: object
+            properties:
+              add_ids:
+                type: array
+                items:
+                  type: integer
+                description: "List of mechanic IDs to add to the ticket."
+                example: [1, 2]
+              remove_ids:
+                type: array
+                items:
+                  type: integer
+                description: "List of mechanic IDs to remove from the ticket."
+                example: [3]
+      responses:
+        200:
+          description: "Mechanics updated successfully."
+        207:
+          description: "Partial success, some mechanics could not be added/removed."
+        400:
+          description: "Bad request or no changes made."
+        404:
+          description: "Service ticket not found."
+
 definitions:
   Customer:
     type: object
