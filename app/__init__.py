@@ -177,7 +177,9 @@ def register_blueprints(app):
             blueprint = getattr(module, bp_variable)
             app.register_blueprint(blueprint, url_prefix=url_prefix)
         except (ImportError, AttributeError, KeyError) as e:
-            print(f"Warning: Could not register blueprint '{bp_name}' from 'app.routes.{bp_name}': {e}")
+            print(
+                f"Warning: Could not register blueprint '{bp_name}' from 'app.routes.{bp_name}': {e}"
+            )
 
 
 def register_additional_routes(app):

@@ -109,7 +109,9 @@ def test_customer_crud():
     headers = {"Authorization": f"Bearer {token}"}
 
     try:
-        response = requests.put(f"{BASE_URL}/customers/{customer_id}", json=update_data, headers=headers)
+        response = requests.put(
+            f"{BASE_URL}/customers/{customer_id}", json=update_data, headers=headers
+        )
         print(f"Status Code: {response.status_code}")
         if response.status_code == 200:
             updated_customer = response.json()
@@ -126,7 +128,9 @@ def test_customer_crud():
     # Test DELETE customer
     print(f"\n=== Testing DELETE Customer ({customer_id}) ===")
     try:
-        response = requests.delete(f"{BASE_URL}/customers/{customer_id}", headers=headers)
+        response = requests.delete(
+            f"{BASE_URL}/customers/{customer_id}", headers=headers
+        )
         print(f"Status Code: {response.status_code}")
         if response.status_code == 200:
             print("✅ DELETE successful")
