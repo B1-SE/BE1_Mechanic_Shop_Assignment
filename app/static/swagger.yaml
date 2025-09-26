@@ -1136,33 +1136,23 @@ definitions:
   CustomerCreate:
     type: object
     required:
-      - first_name
-      - last_name
       - email
       - password
+      - first_name
+      - last_name
+      - address
     properties:
-      first_name:
-        type: string
-        minLength: 1
-        maxLength: 100
-        example: "John"
-      last_name:
-        type: string
-        minLength: 1
-        maxLength: 100
-        example: "Doe"
       email:
         type: string
         format: email
-        example: "john.doe@test.com"
-      phone_number:
-        type: string
-        maxLength: 20
-        example: "555-1234"
       password:
         type: string
-        minLength: 6
-        example: "securepass123"
+      first_name:
+        type: string
+      last_name:
+        type: string
+      address:
+        type: string
 
   CustomerUpdate:
     type: object

@@ -125,10 +125,8 @@ def create_customer():
             phone_number=data.get("phone_number"),
             address=data.get("address"),
         )
-
-        # Set password if provided
-        if "password" in data:
-            customer.set_password(data["password"])
+        # Set the password, which is a required field
+        customer.set_password(data["password"])
 
         # Save to database
         db.session.add(customer)
@@ -304,10 +302,6 @@ def login():
 
         if not customer:
             return jsonify({"error": "Invalid credentials"}), 401
-
-        # Debug logging
-        print(f"Customer found: {customer.email}")
-        print(f"Has password hash: {bool(customer.password_hash)}")
 
         if not customer.password_hash:
             return (
