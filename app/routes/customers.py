@@ -6,8 +6,8 @@ from flask import Blueprint, request, jsonify
 from app.extensions import db, limiter
 from app.models.customer import Customer
 from app.models.service_ticket import ServiceTicket
-from app.schemas.service_ticket import service_tickets_schema
-from app.schemas.customer import customer_schema, customers_schema
+from app.schemas.service_ticket import service_tickets_schema, ServiceTicketSchema
+from app.schemas.customer import customer_schema, customers_schema, LoginResponseSchema
 from app.utils.auth import generate_token, token_required
 from app.utils.util import validate_email
 
@@ -99,9 +99,11 @@ def create_customer():
     """Create a new customer"""
     try:
         data = request.get_json()
-
+        if not data:
+            return jsonify({"error": "Invalid JSON or empty request body"}), 400
+            
         # Validate required fields
-        required_fields = ["first_name", "last_name", "email"]
+        required_fields = ["first_name", "last_name", "email", "password"]
         for field in required_fields:
             if field not in data:
                 return jsonify({"error": f"Missing required field: {field}"}), 400
@@ -193,7 +195,7 @@ def update_customer(current_customer, customer_id):
             # Check if new email already exists (for different customer)
             existing = Customer.query.filter_by(email=data["email"]).first()
             if existing and existing.id != customer_id:
-                return jsonify({"error": "Email already exists"}), 400
+                return jsonify({"error": "Email already exists"}), 409
             customer.email = data["email"]
         if "phone_number" in data:
             customer.phone_number = data["phone_number"]
@@ -289,7 +291,7 @@ def login():
         print(f"Has password hash: {bool(customer.password_hash)}")
 
         if not customer.password_hash:
-            return jsonify({"error": "Account not properly configured"}), 401
+            return jsonify({"error": "Account not properly configured for password login"}), 401
 
         if not customer.check_password(data["password"]):
             return jsonify({"error": "Invalid credentials"}), 401
@@ -297,16 +299,14 @@ def login():
         # Generate proper JWT token - fix this line to include email
         token = generate_token(customer.id, customer.email)
 
-        return (
-            jsonify(
-                {
-                    "message": "Login successful",
-                    "customer": customer_schema.dump(customer),
-                    "token": token,
-                }
-            ),
-            200,
-        )
+        # Use the new schema for a consistent response
+        login_response_schema = LoginResponseSchema()
+        response_data = {
+            "message": "Login successful",
+            "customer": customer,
+            "token": token,
+        }
+        return login_response_schema.dump(response_data), 200
 
     except Exception as e:
         print(f"Login error: {str(e)}")  # Debug logging
