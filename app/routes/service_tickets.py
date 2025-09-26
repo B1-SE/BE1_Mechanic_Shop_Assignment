@@ -54,6 +54,7 @@ def create_service_ticket():
         # Create new service ticket
         ticket = ServiceTicket(
             customer_id=data["customer_id"],
+            mechanic_id=data.get("mechanic_id"),  # Ensure mechanic_id is handled
             vehicle_info=data["vehicle_info"],
             description=data["description"],
             estimated_cost=data.get("estimated_cost", 0.0),

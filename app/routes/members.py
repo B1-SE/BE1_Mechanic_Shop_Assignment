@@ -19,7 +19,7 @@ def get_members():
     try:
         customers = Customer.query.all()
         result = customers_schema.dump(customers)
-        return jsonify({"members": result, "count": len(result)}), 200
+        return jsonify({"customers": result, "count": len(result)}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
