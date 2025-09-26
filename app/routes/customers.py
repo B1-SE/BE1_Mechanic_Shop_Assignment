@@ -6,7 +6,7 @@ from flask import Blueprint, request, jsonify
 from app.extensions import db, limiter
 from app.models.customer import Customer
 from app.models.service_ticket import ServiceTicket
-from app.schemas.service_ticket import service_tickets_schema, ServiceTicketSchema
+from app.schemas.service_ticket import service_tickets_schema
 from app.schemas.customer import customer_schema, customers_schema, LoginResponseSchema
 from app.utils.auth import generate_token, token_required
 from app.utils.util import validate_email
