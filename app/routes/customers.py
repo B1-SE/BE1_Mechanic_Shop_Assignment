@@ -3,8 +3,10 @@ Customer routes for the mechanic shop application.
 """
 
 from flask import Blueprint, request, jsonify
-from app.extensions import db, limiter
+from app.extensions import db, limiter, cache
 from app.models.customer import Customer
+from app.models.service_ticket import ServiceTicket
+from app.schemas.service_ticket import service_tickets_schema
 from app.schemas.customer import customer_schema, customers_schema
 from app.utils.auth import generate_token, token_required
 from app.utils.util import validate_email
@@ -16,6 +18,24 @@ customers_bp = Blueprint("customers", __name__)
 @customers_bp.route("/", methods=["GET"])
 @limiter.limit("100 per minute")
 def get_all_customers():
+    """
+    Get all customers
+    ---
+    tags:
+      - Customers
+    summary: Retrieve a list of all customers.
+    description: This endpoint retrieves all customers from the database.
+    responses:
+      200:
+        description: A list of customers.
+        schema:
+          type: object
+          properties:
+            customers:
+              type: array
+              items:
+                $ref: '#/definitions/Customer'
+    """
     """Get all customers"""
     try:
         customers = Customer.query.all()
@@ -29,6 +49,23 @@ def get_all_customers():
 @customers_bp.route("/<int:customer_id>", methods=["GET"])
 @limiter.limit("100 per minute")
 def get_customer(customer_id):
+    """
+    Get a specific customer by ID
+    ---
+    tags:
+      - Customers
+    summary: Retrieve a single customer's details.
+    parameters:
+      - in: path
+        name: customer_id
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Customer details.
+      404:
+        description: Customer not found.
+    """
     """Get a specific customer"""
     try:
         customer = db.session.get(Customer, customer_id)
@@ -42,6 +79,23 @@ def get_customer(customer_id):
 @customers_bp.route("/", methods=["POST"])
 @limiter.limit("50 per minute")
 def create_customer():
+    """
+    Create a new customer
+    ---
+    tags:
+      - Customers
+    summary: Register a new customer.
+    parameters:
+      - in: body
+        name: body
+        schema:
+          $ref: '#/definitions/CustomerCreate'
+    responses:
+      201:
+        description: Customer created successfully.
+      400:
+        description: Invalid input or email already exists.
+    """
     """Create a new customer"""
     try:
         data = request.get_json()
@@ -89,6 +143,31 @@ def create_customer():
 @limiter.limit("50 per minute")
 @token_required
 def update_customer(current_customer, customer_id):
+    """
+    Update a customer
+    ---
+    tags:
+      - Customers
+    summary: Update an existing customer's details.
+    security:
+      - Bearer: []
+    parameters:
+      - in: path
+        name: customer_id
+        type: integer
+        required: true
+      - in: body
+        name: body
+        schema:
+          $ref: '#/definitions/CustomerUpdate'
+    responses:
+      200:
+        description: Customer updated successfully.
+      403:
+        description: Unauthorized to update this customer.
+      404:
+        description: Customer not found.
+    """
     """Update a customer (requires authentication)"""
     try:
         # Check ownership inline
@@ -135,6 +214,23 @@ def update_customer(current_customer, customer_id):
 @limiter.limit("50 per minute")
 @token_required
 def delete_customer(current_customer, customer_id):
+    """
+    Delete a customer
+    ---
+    tags:
+      - Customers
+    summary: Delete a customer's account.
+    security:
+      - Bearer: []
+    parameters:
+      - in: path
+        name: customer_id
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Customer deleted successfully.
+    """
     """Delete a customer (requires authentication)"""
     try:
         # Check ownership inline
@@ -158,6 +254,23 @@ def delete_customer(current_customer, customer_id):
 @customers_bp.route("/login", methods=["POST"])
 @limiter.limit("50 per minute")
 def login():
+    """
+    Customer Login
+    ---
+    tags:
+      - Authentication
+    summary: Authenticate a customer and receive a JWT token.
+    parameters:
+      - in: body
+        name: body
+        schema:
+          $ref: '#/definitions/LoginCredentials'
+    responses:
+      200:
+        description: Login successful.
+      401:
+        description: Invalid credentials.
+    """
     """Customer login"""
     try:
         data = request.get_json()
@@ -197,3 +310,30 @@ def login():
     except Exception as e:
         print(f"Login error: {str(e)}")  # Debug logging
         return jsonify({"error": f"Login failed: {str(e)}"}), 500
+
+
+@customers_bp.route("/my-tickets", methods=["GET"])
+@limiter.limit("100 per minute")
+@token_required
+def get_my_tickets(current_customer):
+    """
+    Get my service tickets
+    ---
+    tags:
+      - Customers
+    summary: Get all service tickets for the authenticated customer.
+    description: Requires a valid JWT token. Returns a list of service tickets associated with the logged-in customer.
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: Service tickets retrieved successfully.
+      401:
+        description: Unauthorized, token is missing or invalid.
+    """
+    try:
+        tickets = ServiceTicket.query.filter_by(customer_id=current_customer.id).all()
+        result = service_tickets_schema.dump(tickets)
+        return jsonify({"tickets": result, "count": len(result)}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
