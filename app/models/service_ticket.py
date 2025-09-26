@@ -5,6 +5,14 @@ Service ticket model for the mechanic shop application.
 from app.extensions import db
 from datetime import datetime, timezone
 
+# Association table for the many-to-many relationship between ServiceTicket and Mechanic
+service_ticket_mechanic = db.Table(
+    "service_ticket_mechanic",
+    db.Column("service_ticket_id", db.Integer, db.ForeignKey("service_tickets.id"), primary_key=True),
+    db.Column("mechanic_id", db.Integer, db.ForeignKey("mechanics.id"), primary_key=True),
+)
+
+
 
 class ServiceTicket(db.Model):
     """Service ticket model"""
@@ -13,7 +21,6 @@ class ServiceTicket(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     customer_id = db.Column(db.Integer, db.ForeignKey("customers.id"), nullable=False)
-    mechanic_id = db.Column(db.Integer, db.ForeignKey("mechanics.id"), nullable=True)
     vehicle_info = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=False)
     status = db.Column(db.String(50), default="pending")
@@ -30,7 +37,12 @@ class ServiceTicket(db.Model):
 
     # Relationships
     customer = db.relationship("Customer", back_populates="service_tickets")
-    mechanic = db.relationship("Mechanic", backref="assigned_tickets")
+    mechanics = db.relationship(
+        "Mechanic",
+        secondary=service_ticket_mechanic,
+        backref=db.backref("service_tickets", lazy="dynamic"),
+        lazy="dynamic",
+    )
 
     def __repr__(self):
         return f"<ServiceTicket {self.id} - {self.status}>"
@@ -40,7 +52,6 @@ class ServiceTicket(db.Model):
         return {
             "id": self.id,
             "customer_id": self.customer_id,
-            "mechanic_id": self.mechanic_id,
             "vehicle_info": self.vehicle_info,
             "description": self.description,
             "status": self.status,

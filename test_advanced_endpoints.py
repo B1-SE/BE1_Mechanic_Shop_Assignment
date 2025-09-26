@@ -4,7 +4,7 @@ Test script for advanced endpoints: pagination, sorting, filtering, and bulk ope
 
 import requests
 
-BASE_URL = "http://127.0.0.1:5000"
+BASE_URL = "https://your-app-name.onrender.com"
 
 
 def test_advanced_endpoints():

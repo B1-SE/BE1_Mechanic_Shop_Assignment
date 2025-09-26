@@ -17,7 +17,7 @@ def run_flask_app(app):
 
 def test_customer_crud():
     """Test all Customer CRUD operations."""
-    BASE_URL = "http://127.0.0.1:5001"
+    BASE_URL = "https://your-app-name.onrender.com"
 
     print("Testing Customer CRUD Endpoints (Application Factory Pattern)")
     print("============================================================")

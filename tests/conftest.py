@@ -81,10 +81,10 @@ def init_database(app, clean_database):
         mechanic = Mechanic(
             name="Mike Johnson",
             email="mike.johnson@shop.com",  # Changed from @test.com to @shop.com
-            phone="555-0102",
-            salary=75000.00,
+            phone_number="555-0102",
+            hourly_rate=75.00,
             is_active=True,
-            specializations="Engine, Brakes",
+            specialty="Engine, Brakes",
         )
         db.session.add(mechanic)
 
@@ -92,10 +92,10 @@ def init_database(app, clean_database):
         mechanic2 = Mechanic(
             name="Sarah Lee",
             email="sarah.lee@shop.com",
-            phone="555-0104",
-            salary=80000.00,
+            phone_number="555-0104",
+            hourly_rate=80.00,
             is_active=True,
-            specializations="Transmission, Electrical",
+            specialty="Transmission, Electrical",
         )
         db.session.add(mechanic2)
 

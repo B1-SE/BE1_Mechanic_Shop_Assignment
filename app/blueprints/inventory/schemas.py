@@ -1,15 +1,18 @@
-# app/blueprints/inventory/schemas.py
-from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
-from marshmallow import fields
+"""
+Inventory blueprint schemas.
+"""
+from app.extensions import ma
 from app.models.inventory import Inventory
 
 
-class InventorySchema(SQLAlchemyAutoSchema):
+class InventorySchema(ma.SQLAlchemyAutoSchema):
+    """Schema for serializing and deserializing Inventory objects."""
+
     class Meta:
         model = Inventory
-        load_instance = False  # Change to False to avoid session issues
+        load_instance = True
         include_fk = True
 
-    id = fields.Int(dump_only=True)
-    name = fields.Str(required=True)
-    price = fields.Float(required=True)
+
+inventory_schema = InventorySchema()
+inventories_schema = InventorySchema(many=True)

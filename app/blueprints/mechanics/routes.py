@@ -2,21 +2,24 @@
 Mechanic routes for the mechanic shop API.
 """
 
-from flask import Blueprint, jsonify, request
+from flask import request, jsonify
 from marshmallow import ValidationError
+from sqlalchemy import func, desc, asc
+from app.models.service_ticket import service_ticket_mechanic
 from app.extensions import db, cache, limiter
 from app.models.mechanic import Mechanic
-from app.models.service_ticket import service_ticket_mechanic
-from sqlalchemy import func, desc, asc
-from .schemas import mechanic_schema, mechanics_schema
+from app.auth import encode_mechanic_token, mechanic_token_required
+from . import mechanics_bp
+from .schemas import mechanic_schema, mechanics_schema, MechanicSchema
 
-# Create mechanic blueprint
-mechanics_bp = Blueprint("mechanics", __name__)
+# Schema for login, only requires email and password
+login_schema = MechanicSchema(only=("email", "password"), load_only=True)
 
 
 @mechanics_bp.route("/", methods=["POST"])
 @limiter.limit("10 per minute")  # Rate limit mechanic creation
-def create_mechanic():
+@mechanic_token_required
+def create_mechanic(mechanic_id):
     """
     Create a new mechanic.
 
@@ -57,6 +60,41 @@ def create_mechanic():
         db.session.rollback()
         return jsonify({"message": str(e)}), 400
 
+@mechanics_bp.route("/login", methods=["POST"])
+def login():
+    """
+    Authenticate a mechanic and return a JWT token.
+    """
+    try:
+        json_data = request.get_json()
+        if not json_data:
+            return jsonify({"message": "No input data provided"}), 400
+
+        # Validate login credentials
+        credentials = login_schema.load(json_data)
+
+        # Find mechanic by email
+        mechanic = Mechanic.query.filter_by(email=credentials["email"]).first()
+
+        # Check if mechanic exists and password is correct
+        if mechanic and mechanic.check_password(credentials["password"]):
+            # Generate token with mechanic role
+            token = encode_mechanic_token(mechanic.id)
+            return (
+                jsonify(
+                    {
+                        "message": "Mechanic login successful",
+                        "token": token,
+                        "mechanic": mechanic_schema.dump(mechanic),
+                    }
+                ),
+                200,
+            )
+
+        return jsonify({"message": "Invalid email or password"}), 401
+
+    except ValidationError as err:
+        return jsonify({"errors": err.messages}), 422
 
 @mechanics_bp.route("/by-workload", methods=["GET"])
 def get_mechanics_by_workload():
@@ -155,75 +193,6 @@ def get_mechanics():
     return jsonify(mechanics_schema.dump(mechanics)), 200
 
 
-@mechanics_bp.route("/by-workload", methods=["GET"])
-def get_mechanics_by_workload():
-    """
-    Get mechanics ordered by the number of service tickets they've worked on.
-
-    Query Parameters:
-    - order: Sort order (asc, desc) (default: desc - most tickets first)
-    - limit: Maximum number of mechanics to return (default: all)
-
-    Returns mechanics with their ticket counts, sorted by workload.
-    This endpoint is useful for:
-    - Identifying the most experienced mechanics
-    - Load balancing ticket assignments
-    - Performance reviews and workload analysis
-    """
-    try:
-        # Get query parameters
-        order = request.args.get("order", "desc").lower()
-        limit = request.args.get("limit", type=int)
-
-        # Validate order parameter
-        if order not in ["asc", "desc"]:
-            return (
-                jsonify(
-                    {
-                        "error": "Invalid order",
-                        "message": 'order must be "asc" or "desc"',
-                    }
-                ),
-                400,
-            )
-
-        # Efficiently query mechanics with their ticket counts using the database
-        query = (
-            db.session.query(
-                Mechanic,
-                func.count(service_ticket_mechanic.c.service_ticket_id).label(
-                    "ticket_count"
-                ),
-            )
-            .outerjoin(service_ticket_mechanic)
-            .group_by(Mechanic.id)
-        )
-
-        # Apply sorting
-        if order == "desc":
-            query = query.order_by(desc("ticket_count"), Mechanic.name)
-        else:
-            query = query.order_by(asc("ticket_count"), Mechanic.name)
-
-        # Apply limit
-        if limit and limit > 0:
-            query = query.limit(limit)
-
-        # Format the results
-        results = query.all()
-        mechanics_with_workload = [
-            {**mechanic_schema.dump(mechanic), "ticket_count": ticket_count}
-            for mechanic, ticket_count in results
-        ]
-
-        return jsonify(mechanics_with_workload), 200
-
-    except Exception as e:
-        return (
-            jsonify({"error": "Failed to retrieve mechanics by workload", "message": str(e)}),
-            500,
-        )
-
 @mechanics_bp.route("/<int:mechanic_id>", methods=["GET"])
 def get_mechanic(mechanic_id):
     """Get a single mechanic by ID."""
@@ -236,7 +205,8 @@ def get_mechanic(mechanic_id):
 
 
 @mechanics_bp.route("/<int:mechanic_id>", methods=["PUT"])
-def update_mechanic(mechanic_id):
+@mechanic_token_required
+def update_mechanic(mechanic_id, **kwargs):
     """Update a mechanic by ID."""
     mechanic = db.session.get(Mechanic, mechanic_id)
 
@@ -248,9 +218,22 @@ def update_mechanic(mechanic_id):
         if not json_data:
             return jsonify({"message": "No input data provided"}), 400
 
+        # Validate and load the data
+        # Use partial=True to allow for partial updates
         mechanic_data = mechanic_schema.load(json_data, partial=True)
 
-        # Update mechanic attributes
+        # Check if email is being updated and if it already exists for another mechanic
+        if "email" in mechanic_data and mechanic_data["email"] != mechanic.email:
+            existing_mechanic = Mechanic.query.filter_by(
+                email=mechanic_data["email"]
+            ).first()
+            if existing_mechanic:
+                return (
+                    jsonify({"error": "Email already associated with another mechanic"}),
+                    409,
+                )
+
+        # Update mechanic attributes from the validated data
         for key, value in mechanic_data.items():
             setattr(mechanic, key, value)
 
@@ -268,7 +251,8 @@ def update_mechanic(mechanic_id):
 
 
 @mechanics_bp.route("/<int:mechanic_id>", methods=["DELETE"])
-def delete_mechanic(mechanic_id):
+@mechanic_token_required
+def delete_mechanic(mechanic_id, **kwargs):
     """Delete a mechanic by ID."""
     mechanic = db.session.get(Mechanic, mechanic_id)
 

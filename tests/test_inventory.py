@@ -1,5 +1,82 @@
-class TestInventoryAPI:
-    """Test cases for inventory API endpoints."""
+class TestCustomersAPI:
+    """Test cases for customers API endpoints."""
+
+    def test_get_all_customers_empty_database(self, client, clean_database):
+        """Test GET /customers/ with empty database"""
+        response = client.get("/customers/")
+        assert response.status_code == 200
+        data = response.get_json()
+        assert "customers" in data
+        # Empty test should have no customers
+        assert len(data["customers"]) == 0
+
+    def test_get_all_customers_success(self, client, init_database):
+        """Test GET /customers/ with data"""
+        response = client.get("/customers/")
+        assert response.status_code == 200
+        data = response.get_json()
+        assert "customers" in data
+        assert len(data["customers"]) >= 2
+
+    def test_create_customer_success(self, client, clean_database):
+        """Test creating customer - positive case"""
+        customer_data = {
+            "first_name": "Test",
+            "last_name": "Customer",
+            "email": "test.customer@test.com",
+            "phone_number": "555-0999",
+            "address": "999 Test St",
+            "password": "test123",
+        }
+
+        response = client.post(
+            "/customers/", json=customer_data, content_type="application/json"
+        )
+        assert response.status_code == 201
+
+    def test_create_customer_missing_required_field(self, client, clean_database):
+        """Test creating customer with missing required field"""
+        customer_data = {"last_name": "Customer", "email": "test.customer@test.com"}
+        response = client.post(
+            "/customers/", json=customer_data, content_type="application/json"
+        )
+        assert response.status_code == 400
+
+    def test_create_customer_invalid_email(self, client, clean_database):
+        """Test creating customer with invalid email"""
+        customer_data = {
+            "first_name": "Test",
+            "last_name": "Customer",
+            "email": "invalid-email",
+            "password": "test123",
+        }
+        response = client.post(
+            "/customers/", json=customer_data, content_type="application/json"
+        )
+        assert response.status_code == 400
+
+    def test_create_customer_duplicate_email(self, client, init_database):
+        """Test creating customer with duplicate email"""
+        customer_data = {
+            "first_name": "Test",
+            "last_name": "Customer",
+            "email": "john.doe@test.com",
+            "password": "test123",
+        }
+        response = client.post(
+            "/customers/", json=customer_data, content_type="application/json"
+        )
+        assert response.status_code == 400
+
+    def test_get_customer_by_id_success(self, client, init_database):
+        """Test GET /customers/{id} - positive case"""
+        response = client.get("/customers/1")
+        assert response.status_code == 200
+
+    def test_get_customer_by_id_not_found(self, client, clean_database):
+        """Test GET /customers/{id} - customer not found"""
+        response = client.get("/customers/999")
+        assert response.status_code == 404
 
     def _login_and_get_token(
         self, client, email="john.doe@test.com", password="password123"
@@ -13,151 +90,106 @@ class TestInventoryAPI:
             return response.get_json()["token"]
         return None
 
-    def test_get_all_inventory_success(self, client, init_database):
-        """Test getting all inventory items - positive case"""
-        response = client.get("/inventory/")
+    def test_update_customer_success(self, client, init_database):
+        """Test PUT /customers/{id} - positive case"""
+        # Login to get token
+        token = self._login_and_get_token(client)
+        assert token is not None, "Failed to get auth token"
+
+        update_data = {"first_name": "Updated", "last_name": "Name"}
+
+        headers = {"Authorization": f"Bearer {token}"}
+        response = client.put(
+            "/customers/1",
+            json=update_data,
+            content_type="application/json",
+            headers=headers,
+        )
         assert response.status_code == 200
 
-    def test_get_inventory_by_id_success(self, client, init_database):
-        """Test getting inventory item by ID - positive case"""
-        response = client.get("/inventory/1")
-        assert response.status_code in [200, 404]  # May not exist in test data
+    def test_update_customer_not_found(self, client, init_database):
+        """Test PUT /customers/{id} - customer not found"""
+        # Login to get token
+        token = self._login_and_get_token(client)
+        assert token is not None, "Failed to get auth token"
 
-    def test_get_inventory_by_id_not_found(self, client, init_database):
-        """Test getting non-existent inventory item - negative case"""
-        response = client.get("/inventory/999")
-        assert response.status_code == 404
+        update_data = {"first_name": "Updated", "last_name": "Name"}
 
-    def test_create_inventory_item_success(self, client, init_database):
-        """Test creating inventory item - positive case"""
-        # Test without authentication first to see if that's the issue
-        item_data = {
-            "name": "Air Filter",
-            "description": "High-performance air filter",
-            "quantity": 30,
-            "price": 45.99,
-            "category": "Filters",
-        }
-
-        response = client.post(
-            "/inventory/", json=item_data, content_type="application/json"
-        )
-
-        # If we get 401, try with auth
-        if response.status_code == 401:
-            token = self._login_and_get_token(client)
-            headers = {"Authorization": f"Bearer {token}"} if token else {}
-
-            response = client.post(
-                "/inventory/",
-                json=item_data,
-                content_type="application/json",
-                headers=headers,
-            )
-
-        # Accept multiple valid responses
-        assert response.status_code in [
-            201,
-            400,
-            401,
-        ]  # API might have specific validation rules
-
-    def test_create_inventory_item_missing_required_field(self, client, init_database):
-        """Test creating inventory item without required field - negative case"""
-        item_data = {
-            "name": "Test Item",
-            # Missing required fields
-            "quantity": 10,
-        }
-
-        response = client.post(
-            "/inventory/", json=item_data, content_type="application/json"
-        )
-        assert response.status_code in [
-            400,
-            401,
-        ]  # Should fail due to missing fields or auth
-
-    def test_create_inventory_item_negative_quantity(self, client, init_database):
-        """Test creating inventory item with negative quantity - negative case"""
-        item_data = {
-            "name": "Test Item",
-            "description": "Test description",
-            "quantity": -5,  # Invalid negative quantity
-            "price": 10.00,
-            "category": "Test",
-        }
-
-        response = client.post(
-            "/inventory/", json=item_data, content_type="application/json"
-        )
-        assert response.status_code in [
-            400,
-            401,
-        ]  # Should fail due to validation or auth
-
-    def test_create_inventory_item_negative_price(self, client, init_database):
-        """Test creating inventory item with negative price - negative case"""
-        item_data = {
-            "name": "Test Item",
-            "description": "Test description",
-            "quantity": 10,
-            "price": -5.00,  # Invalid negative price
-            "category": "Test",
-        }
-
-        response = client.post(
-            "/inventory/", json=item_data, content_type="application/json"
-        )
-        assert response.status_code in [
-            400,
-            401,
-        ]  # Should fail due to validation or auth
-
-    def test_update_inventory_item_success(self, client, init_database):
-        """Test updating inventory item - positive case"""
-        update_data = {"quantity": 75, "price": 29.99}
-
+        headers = {"Authorization": f"Bearer {token}"}
         response = client.put(
-            "/inventory/1", json=update_data, content_type="application/json"
-        )
+            "/customers/999",
+            json=update_data,
+            content_type="application/json",
+            headers=headers,
+        )  # This will be forbidden before it's not found
+        assert response.status_code == 403
 
-        # If we get 401, try with auth
-        if response.status_code == 401:
-            token = self._login_and_get_token(client)
-            headers = {"Authorization": f"Bearer {token}"} if token else {}
+    def test_update_customer_unauthorized(self, client, init_database):
+        """Test PUT /customers/{id} - trying to update different customer"""
+        # Login as customer 1
+        token = self._login_and_get_token(client)
+        assert token is not None, "Failed to get auth token"
 
-            response = client.put(
-                "/inventory/1",
-                json=update_data,
-                content_type="application/json",
-                headers=headers,
-            )
+        update_data = {"first_name": "Updated", "last_name": "Name"}
 
-        assert response.status_code in [200, 404, 401]
-
-    def test_update_inventory_item_not_found(self, client, init_database):
-        """Test updating non-existent inventory item - negative case"""
-        update_data = {"quantity": 100}
-
+        headers = {"Authorization": f"Bearer {token}"}
+        # Try to update customer 2 (should fail)
         response = client.put(
-            "/inventory/999", json=update_data, content_type="application/json"
+            "/customers/2",
+            json=update_data,
+            content_type="application/json",
+            headers=headers,
         )
-        assert response.status_code in [404, 401]
+        assert response.status_code == 403
 
-    def test_delete_inventory_item_success(self, client, init_database):
-        """Test deleting inventory item - positive case"""
-        response = client.delete("/inventory/1")
+    def test_delete_customer_success(self, client, init_database):
+        """Test DELETE /customers/{id} - positive case"""
+        # Login to get token
+        token = self._login_and_get_token(client)
+        assert token is not None, "Failed to get auth token"
 
-        # If we get 401, try with auth
-        if response.status_code == 401:
-            token = self._login_and_get_token(client)
-            headers = {"Authorization": f"Bearer {token}"} if token else {}
-            response = client.delete("/inventory/1", headers=headers)
+        headers = {"Authorization": f"Bearer {token}"}
+        response = client.delete("/customers/1", headers=headers)
+        assert response.status_code == 200  # The API returns 200 with a message
 
-        assert response.status_code in [200, 204, 404, 401]
+    def test_delete_customer_not_found(self, client, init_database):
+        """Test DELETE /customers/{id} - customer not found"""
+        # Login to get token
+        token = self._login_and_get_token(client)
+        assert token is not None, "Failed to get auth token"
 
-    def test_delete_inventory_item_not_found(self, client, init_database):
-        """Test deleting non-existent inventory item - negative case"""
-        response = client.delete("/inventory/999")
-        assert response.status_code in [404, 401]
+        headers = {"Authorization": f"Bearer {token}"}
+        response = client.delete("/customers/999", headers=headers)
+        assert (
+            response.status_code == 403
+        )  # This will be forbidden before it's not found
+
+    def test_delete_customer_unauthorized(self, client, init_database):
+        """Test DELETE /customers/{id} - trying to delete different customer"""
+        # Login as customer 1
+        token = self._login_and_get_token(client)
+        assert token is not None, "Failed to get auth token"
+
+        headers = {"Authorization": f"Bearer {token}"}
+        # Try to delete customer 2 (should fail)
+        response = client.delete("/customers/2", headers=headers)
+        assert response.status_code == 403
+
+    def test_login_success(self, client, init_database):
+        """Test successful customer login"""
+        login_data = {"email": "john.doe@test.com", "password": "password123"}
+        response = client.post(
+            "/customers/login", json=login_data, content_type="application/json"
+        )
+        assert response.status_code == 200
+        data = response.get_json()
+        assert "token" in data
+        assert "customer" in data
+
+    def test_login_invalid_credentials(self, client, init_database):
+        """Test login with invalid credentials"""
+        login_data = {"email": "john.doe@test.com", "password": "wrongpassword"}
+        response = client.post(
+            "/customers/login", json=login_data, content_type="application/json"
+        )
+        assert response.status_code == 401

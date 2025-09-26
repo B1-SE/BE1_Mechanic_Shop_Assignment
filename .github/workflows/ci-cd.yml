@@ -38,7 +38,7 @@ jobs:
       run: bandit -r app/
 
     - name: Run Safety vulnerability scan
-      run: safety scan --key ${{ secrets.SAFETY_API_KEY }} --bare
+      run: safety scan --bare
     
     - name: Test with pytest
       env:
@@ -61,8 +61,6 @@ jobs:
     environment: production
     
     steps:
-    - uses: actions/checkout@v4
-
     - name: Trigger Render Deployment
       uses: johnbeynon/render-deploy-action@v0.0.8
       with:

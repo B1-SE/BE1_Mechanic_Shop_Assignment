@@ -41,29 +41,6 @@ securityDefinitions:
       - Token will be validated on each request
       - Expired tokens will return 401 Unauthorized
   
-  JWTAuth:
-    type: apiKey
-    name: Authorization
-    in: header
-    description: |
-      JSON Web Token (JWT) authentication for API access.
-      
-      **Authentication Flow:**
-      1. **Login:** POST credentials to `/login` endpoint
-      2. **Token:** Receive JWT access token in response
-      3. **Header:** Include token in Authorization header
-      4. **Access:** Make authenticated requests to protected resources
-      
-      **Token Security:**
-      - Cryptographically signed for integrity
-      - Contains encoded user claims and permissions
-      - Automatically expires for security (configurable TTL)
-      - Stateless - no server-side session storage required
-      
-      **Error Responses:**
-      - `401 Unauthorized`: Missing, invalid, or expired token
-      - `403 Forbidden`: Valid token but insufficient permissions
-
 paths:
   /:
     get:
@@ -413,7 +390,6 @@ paths:
           schema:
             $ref: "#/definitions/CreateMemberPayload"
       security:
-        - Bearer: []
         - JWTAuth: []
       responses:
         201:
@@ -476,7 +452,6 @@ paths:
       summary: "Get all members"
       description: "Retrieve a list of all members in the system"
       security:
-        - Bearer: []
         - JWTAuth: []
       responses:
         200:
@@ -501,8 +476,7 @@ paths:
       operationId: "getMemberById"
       produces:
         - "application/json"
-      security:
-        - Bearer: []
+      security: []
         - JWTAuth: []
       parameters:
         - in: path
@@ -577,7 +551,7 @@ paths:
       operationId: "updateMember"
       consumes:
         - "application/json"
-      produces:
+      produces: []
         - "application/json"
       security:
         - Bearer: []
@@ -684,7 +658,7 @@ paths:
       operationId: "deleteMember"
       produces:
         - "application/json"
-      security:
+      security: []
         - Bearer: []
       parameters:
         - in: path
@@ -952,14 +926,14 @@ paths:
   /service-tickets/:
     get:
       tags:
-        - "Service Tickets"
+        - "service-tickets"
       summary: "Get all service tickets"
       responses:
         200:
           description: "Service tickets retrieved successfully"
     post:
       tags:
-        - "Service Tickets"
+        - "service-tickets"
       summary: "Create service ticket"
       parameters:
         - in: body
@@ -976,7 +950,7 @@ paths:
   /service-tickets/{id}:
     get:
       tags:
-        - "Service Tickets"
+        - "service-tickets"
       summary: "Get service ticket by ID"
       parameters:
         - in: path
@@ -992,7 +966,7 @@ paths:
   /service-tickets/{id}/inventory:
     post:
       tags:
-        - "Service Tickets"
+        - "service-tickets"
       summary: "Add inventory to ticket"
       description: "Add inventory parts to a service ticket"
       parameters:
@@ -1020,7 +994,7 @@ paths:
           description: "Service ticket not found"
     delete:
       tags:
-        - "Service Tickets"
+        - "service-tickets"
       summary: "Remove inventory from ticket"
       description: "Remove inventory parts from a service ticket"
       parameters:
@@ -1047,10 +1021,43 @@ paths:
         404:
           description: "Service ticket not found"
 
+  /service-tickets/{ticket_id}/inventory/{inventory_id}:
+    post:
+      tags:
+        - "service-tickets"
+      summary: "Add a single inventory item to a ticket"
+      description: "Associates a single inventory part with an existing service ticket. Requires mechanic authentication."
+      security:
+        - Bearer: []
+      parameters:
+        - in: path
+          name: ticket_id
+          type: integer
+          required: true
+          description: "The ID of the service ticket."
+        - in: path
+          name: inventory_id
+          type: integer
+          required: true
+          description: "The ID of the inventory item to add."
+      responses:
+        200:
+          description: "Inventory item added successfully."
+          schema:
+            $ref: "#/definitions/InventoryAssignmentResponse"
+        400:
+          description: "Bad request, item may already be on the ticket."
+        401:
+          description: "Unauthorized."
+        404:
+          description: "Service ticket or inventory item not found."
+        500:
+          description: "Internal server error."
+
   /service-tickets/{ticket_id}/assign-mechanic/{mechanic_id}:
     put:
       tags:
-        - "Service Tickets"
+        - "service-tickets"
       summary: "Assign mechanic to ticket"
       description: "Assign a mechanic to a service ticket (Rate Limited: 20 per minute)"
       parameters:
@@ -1064,7 +1071,9 @@ paths:
           required: true
       responses:
         200:
-          description: "Mechanic assigned successfully"
+          description: "Mechanic assigned successfully."
+          schema:
+            $ref: "#/definitions/MechanicAssignmentResponse"
         400:
           description: "Mechanic already assigned"
         404:
@@ -1072,10 +1081,41 @@ paths:
         429:
           description: "Rate limit exceeded"
 
+  /service-tickets/{ticket_id}/remove-mechanic/{mechanic_id}:
+    put:
+      tags:
+        - "service-tickets"
+      summary: "Remove mechanic from ticket"
+      description: "Removes a mechanic's assignment from a service ticket. Requires mechanic authentication."
+      security:
+        - Bearer: []
+      parameters:
+        - in: path
+          name: ticket_id
+          type: integer
+          required: true
+          description: "The ID of the service ticket."
+        - in: path
+          name: mechanic_id
+          type: integer
+          required: true
+          description: "The ID of the mechanic to remove."
+      responses:
+        200:
+          description: "Mechanic removed successfully."
+          schema:
+            $ref: "#/definitions/MechanicAssignmentResponse"
+        400:
+          description: "Mechanic is not assigned to this ticket."
+        404:
+          description: "Service ticket or mechanic not found."
+        500:
+          description: "Internal server error."
+
   /service-tickets/{id}/edit:
     put:
       tags:
-        - "Service Tickets"
+        - "service-tickets"
       summary: "Bulk edit mechanics on a ticket"
       description: "Bulk add and remove mechanics from a service ticket."
       parameters:
@@ -1104,13 +1144,41 @@ paths:
                 example: [3]
       responses:
         200:
-          description: "Mechanics updated successfully."
+          description: "Mechanics updated successfully with no errors."
+          schema:
+            $ref: "#/definitions/ServiceTicketResponse"
         207:
           description: "Partial success, some mechanics could not be added/removed."
         400:
           description: "Bad request or no changes made."
         404:
           description: "Service ticket not found."
+
+  /service-tickets/{ticket_id}/cost:
+    get:
+      tags:
+        - "service-tickets"
+      summary: "Calculate total cost of parts for a ticket"
+      description: "Calculates and returns the total cost of all inventory parts associated with a specific service ticket. Requires mechanic authentication."
+      security:
+        - Bearer: []
+      parameters:
+        - in: path
+          name: ticket_id
+          type: integer
+          required: true
+          description: "The ID of the service ticket."
+      responses:
+        200:
+          description: "Cost calculation successful."
+          schema:
+            $ref: "#/definitions/ServiceTicketCostResponse"
+        401:
+          description: "Unauthorized."
+        404:
+          description: "Service ticket not found."
+        500:
+          description: "Internal server error."
 
 definitions:
   Customer:
@@ -1304,6 +1372,79 @@ definitions:
         items:
           type: integer
         example: [1, 2]
+
+  ServiceTicketResponse:
+    type: object
+    properties:
+      message:
+        type: string
+      changes_made:
+        type: array
+        items:
+          type: string
+      errors:
+        type: array
+        items:
+          type: string
+      service_ticket:
+        $ref: "#/definitions/ServiceTicket"
+
+  MechanicAssignmentResponse:
+    type: object
+    properties:
+      message:
+        type: string
+        example: "Mechanic Mike Johnson assigned to service ticket 1"
+      service_ticket:
+        $ref: "#/definitions/ServiceTicket"
+    example:
+      message: "Mechanic Mike Johnson assigned to service ticket 1"
+      service_ticket:
+        id: 1
+        customer_id: 1
+        description: "Oil change and brake inspection"
+        service_date: "2024-12-24"
+        mechanics:
+          - id: 1
+            name: "Mike Johnson"
+            specialty: "Engine Repair"
+            hourly_rate: 75.00
+        inventory_parts: []
+
+  InventoryAssignmentResponse:
+    type: object
+    properties:
+      message:
+        type: string
+        example: "Inventory item 'Oil Filter' added to service ticket 1"
+      service_ticket:
+        $ref: "#/definitions/ServiceTicket"
+
+  ServiceTicketCostResponse:
+    type: object
+    properties:
+      ticket_id:
+        type: integer
+        example: 1
+      total_parts_cost:
+        type: number
+        format: float
+        example: 115.98
+      parts_count:
+        type: integer
+        example: 2
+      parts_breakdown:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            price:
+              type: number
+              format: float
 
   # Authentication-related definitions
   LoginCredentials:

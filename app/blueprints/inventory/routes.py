@@ -1,189 +1,209 @@
-# app/blueprints/inventory/routes.py
-from flask import request, jsonify
+"""
+Inventory routes for the mechanic shop API.
+"""
+
+from flask import jsonify, request
 from marshmallow import ValidationError
-from app.models import Inventory
-from app.extensions import db, cache
-from app.utils.util import token_required
+from app.extensions import db, cache, limiter
+from app.models.inventory import Inventory
+from app.auth import mechanic_token_required
+from .schemas import inventory_schema, inventories_schema
 from . import inventory_bp
-from .schemas import InventorySchema
-
-inventory_schema = InventorySchema()
-inventory_list_schema = InventorySchema(many=True)
-
-
-@inventory_bp.route("/", methods=["GET"])
-@cache.cached(timeout=600, key_prefix="all_inventory")  # Cache for 10 minutes
-def get_all_inventory():
-    """Get all inventory items with optional pagination, sorting, and filtering"""
-    page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 10, type=int)
-
-    # Advanced query features
-    query = Inventory.query
-
-    # Filtering by name
-    name_filter = request.args.get("name")
-    if name_filter:
-        query = query.filter(Inventory.name.ilike(f"%{name_filter}%"))
-
-    # Filtering by price range
-    min_price = request.args.get("min_price", type=float)
-    max_price = request.args.get("max_price", type=float)
-    if min_price is not None:
-        query = query.filter(Inventory.price >= min_price)
-    if max_price is not None:
-        query = query.filter(Inventory.price <= max_price)
-
-    # Sorting
-    sort_by = request.args.get("sort_by", "id")
-    sort_order = request.args.get("sort_order", "asc")
-
-    if hasattr(Inventory, sort_by):
-        if sort_order.lower() == "desc":
-            query = query.order_by(getattr(Inventory, sort_by).desc())
-        else:
-            query = query.order_by(getattr(Inventory, sort_by))
-
-    # Pagination
-    if per_page > 100:  # Limit max per_page
-        per_page = 100
-
-    inventory_paginated = query.paginate(page=page, per_page=per_page, error_out=False)
-
-    return jsonify(
-        {
-            "inventory": inventory_list_schema.dump(inventory_paginated.items),
-            "pagination": {
-                "total": inventory_paginated.total,
-                "pages": inventory_paginated.pages,
-                "current_page": inventory_paginated.page,
-                "per_page": inventory_paginated.per_page,
-                "has_next": inventory_paginated.has_next,
-                "has_prev": inventory_paginated.has_prev,
-            },
-        }
-    )
-
-
-@inventory_bp.route("/<int:id>", methods=["GET"])
-def get_inventory_by_id(id):
-    """Get a specific inventory item by ID"""
-    inventory_item = Inventory.query.get_or_404(id)
-    return jsonify(inventory_schema.dump(inventory_item))
 
 
 @inventory_bp.route("/", methods=["POST"])
-@token_required
-def create_inventory(current_user):
-    """Create a new inventory item"""
+@mechanic_token_required
+def create_inventory_item(mechanic_id):
+    """Create a new inventory item. Requires mechanic authentication."""
     try:
-        inventory_data = inventory_schema.load(request.json)
+        json_data = request.get_json()
+        if not json_data:
+            return jsonify({"message": "No input data provided"}), 400
+
+        inventory_data = inventory_schema.load(json_data)
+
+        # Check if item with the same name already exists
+        if Inventory.query.filter(Inventory.name.ilike(inventory_data["name"])).first():
+            return jsonify({"error": "Inventory item with this name already exists"}), 409
+
+        new_item = Inventory(**inventory_data)
+        db.session.add(new_item)
+        db.session.commit()
+
+        cache.delete("all_inventory")  # Invalidate cache
+        return jsonify(inventory_schema.dump(new_item)), 201
+
     except ValidationError as err:
         return jsonify({"errors": err.messages}), 400
-
-    # Check if inventory item with same name already exists
-    existing_item = Inventory.query.filter_by(name=inventory_data["name"]).first()
-    if existing_item:
-        return jsonify({"error": "Inventory item with this name already exists"}), 409
-
-    new_inventory = Inventory(
-        name=inventory_data["name"], price=inventory_data["price"]
-    )
-
-    db.session.add(new_inventory)
-    db.session.commit()
-
-    # Clear cache after creating new inventory
-    cache.delete("all_inventory")
-
-    return jsonify(inventory_schema.dump(new_inventory)), 201
-
-
-@inventory_bp.route("/<int:id>", methods=["PUT"])
-@token_required
-def update_inventory(current_user, id):
-    """Update an existing inventory item"""
-    inventory_item = Inventory.query.get_or_404(id)
-
-    try:
-        inventory_data = inventory_schema.load(request.json, partial=True)
-    except ValidationError as err:
-        return jsonify({"errors": err.messages}), 400
-
-    # Check if updating name would create duplicate
-    if "name" in inventory_data and inventory_data["name"] != inventory_item.name:
-        existing_item = Inventory.query.filter_by(name=inventory_data["name"]).first()
-        if existing_item:
-            return (
-                jsonify({"error": "Inventory item with this name already exists"}),
-                409,
-            )
-
-    # Update fields
-    if "name" in inventory_data:
-        inventory_item.name = inventory_data["name"]
-    if "price" in inventory_data:
-        inventory_item.price = inventory_data["price"]
-
-    db.session.commit()
-
-    # Clear cache after updating inventory
-    cache.delete("all_inventory")
-
-    return jsonify(inventory_schema.dump(inventory_item))
-
-
-@inventory_bp.route("/<int:id>", methods=["DELETE"])
-@token_required
-def delete_inventory(current_user, id):
-    """Delete an inventory item"""
-    inventory_item = Inventory.query.get_or_404(id)
-
-    db.session.delete(inventory_item)
-    db.session.commit()
-
-    # Clear cache after deleting inventory
-    cache.delete("all_inventory")
-
-    return jsonify({"message": "Inventory item deleted successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": str(e)}), 500
 
 
 @inventory_bp.route("/bulk", methods=["POST"])
-@token_required
-def create_bulk_inventory(current_user):
-    """Create multiple inventory items at once"""
+@mechanic_token_required
+def bulk_create_inventory_items(mechanic_id):
+    """Create multiple inventory items at once. Requires mechanic authentication."""
     try:
-        inventory_list = inventory_list_schema.load(request.json)
+        json_data = request.get_json()
+        if not isinstance(json_data, list):
+            return jsonify({"error": "Input must be a list of inventory items"}), 400
+
+        # Use many=True for bulk loading and validation
+        inventory_data_list = inventories_schema.load(json_data)
+
+        new_items = []
+        for item_data in inventory_data_list:
+            # Check for existing item name (case-insensitive)
+            if Inventory.query.filter(Inventory.name.ilike(item_data["name"])).first():
+                return (
+                    jsonify(
+                        {
+                            "error": f"Inventory item with name '{item_data['name']}' already exists"
+                        }
+                    ),
+                    409,
+                )
+            new_items.append(Inventory(**item_data))
+
+        db.session.add_all(new_items)
+        db.session.commit()
+
+        cache.delete("all_inventory")  # Invalidate cache
+        return jsonify(inventories_schema.dump(new_items)), 201
+
     except ValidationError as err:
         return jsonify({"errors": err.messages}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": str(e)}), 500
 
-    created_items = []
-    errors = []
 
-    for item_data in inventory_list:
-        # Check for duplicates
-        existing_item = Inventory.query.filter_by(name=item_data["name"]).first()
-        if existing_item:
-            errors.append(f'Inventory item "{item_data["name"]}" already exists')
-            continue
+@inventory_bp.route("/", methods=["GET"])
+@cache.cached(timeout=600, key_prefix="all_inventory")
+def get_inventory_items():
+    """
+    Get all inventory items with pagination, sorting, and filtering.
+    This endpoint is cached for 10 minutes.
 
-        new_inventory = Inventory(name=item_data["name"], price=item_data["price"])
+    Query Parameters:
+    - page: Page number (default: 1).
+    - per_page: Items per page (default: 10, max: 100).
+    - sort_by: Field to sort by (id, name, price; default: id).
+    - sort_order: Sort order (asc, desc; default: asc).
+    - name: Filter by name (partial, case-insensitive match).
+    - min_price: Minimum price filter.
+    - max_price: Maximum price filter.
+    """
+    try:
+        # --- Query Building ---
+        query = Inventory.query
 
-        db.session.add(new_inventory)
-        created_items.append(new_inventory)
+        # --- Filtering ---
+        if name := request.args.get("name"):
+            query = query.filter(Inventory.name.ilike(f"%{name}%"))
+        if min_price := request.args.get("min_price", type=float):
+            query = query.filter(Inventory.price >= min_price)
+        if max_price := request.args.get("max_price", type=float):
+            query = query.filter(Inventory.price <= max_price)
 
-    if created_items:
+        # --- Sorting ---
+        sort_by = request.args.get("sort_by", "id")
+        sort_order = request.args.get("sort_order", "asc")
+        sort_column = getattr(Inventory, sort_by, Inventory.id)
+
+        if sort_order.lower() == "desc":
+            query = query.order_by(sort_column.desc())
+        else:
+            query = query.order_by(sort_column.asc())
+
+        # --- Pagination ---
+        page = request.args.get("page", 1, type=int)
+        per_page = request.args.get("per_page", 10, type=int)
+        per_page = min(per_page, 100)  # Cap per_page at 100
+
+        paginated_items = query.paginate(page=page, per_page=per_page, error_out=False)
+        items = paginated_items.items
+
+        response = {
+            "items": inventories_schema.dump(items),
+            "pagination": {
+                "page": paginated_items.page,
+                "per_page": paginated_items.per_page,
+                "total_pages": paginated_items.pages,
+                "total_items": paginated_items.total,
+                "next_page": paginated_items.next_num,
+                "prev_page": paginated_items.prev_num,
+            },
+        }
+
+        return jsonify(response), 200
+
+    except Exception as e:
+        return (
+            jsonify({"error": "Failed to retrieve inventory items", "message": str(e)}),
+            500,
+        )
+
+
+@inventory_bp.route("/<int:item_id>", methods=["GET"])
+def get_inventory_item(item_id):
+    """Get a single inventory item by ID."""
+    item = db.session.get(Inventory, item_id)
+    if not item:
+        return jsonify({"error": "Inventory item not found"}), 404
+    return jsonify(inventory_schema.dump(item)), 200
+
+
+@inventory_bp.route("/<int:item_id>", methods=["PUT"])
+@mechanic_token_required
+def update_inventory_item(item_id, **kwargs):
+    """Update an inventory item. Requires mechanic authentication."""
+    item = db.session.get(Inventory, item_id)
+    if not item:
+        return jsonify({"error": "Inventory item not found"}), 404
+
+    try:
+        json_data = request.get_json()
+        if not json_data:
+            return jsonify({"message": "No input data provided"}), 400
+
+        inventory_data = inventory_schema.load(json_data, partial=True)
+
+        # Check for name conflict if name is being changed
+        if "name" in inventory_data and inventory_data["name"] != item.name:
+            if Inventory.query.filter(
+                Inventory.name.ilike(inventory_data["name"])
+            ).first():
+                return jsonify({"error": "Inventory item with this name already exists"}), 409
+
+        for key, value in inventory_data.items():
+            setattr(item, key, value)
+
         db.session.commit()
-        # Clear cache after bulk creation
-        cache.delete("all_inventory")
+        cache.delete("all_inventory")  # Invalidate cache
+        return jsonify(inventory_schema.dump(item)), 200
 
-    response = {
-        "created": inventory_list_schema.dump(created_items),
-        "created_count": len(created_items),
-    }
+    except ValidationError as err:
+        return jsonify({"errors": err.messages}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": str(e)}), 500
 
-    if errors:
-        response["errors"] = errors
-        response["error_count"] = len(errors)
 
-    return jsonify(response), 201 if created_items else 400
+@inventory_bp.route("/<int:item_id>", methods=["DELETE"])
+@mechanic_token_required
+def delete_inventory_item(item_id, **kwargs):
+    """Delete an inventory item. Requires mechanic authentication."""
+    item = db.session.get(Inventory, item_id)
+    if not item:
+        return jsonify({"error": "Inventory item not found"}), 404
+
+    try:
+        db.session.delete(item)
+        db.session.commit()
+        cache.delete("all_inventory")  # Invalidate cache
+        return jsonify({"message": "Inventory item deleted successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": str(e)}), 500
