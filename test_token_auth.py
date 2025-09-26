@@ -3,6 +3,7 @@ Test script for JWT token authentication functionality.
 """
 
 import requests
+import time
 
 BASE_URL = "http://127.0.0.1:5000"
 
@@ -15,10 +16,13 @@ def test_token_authentication():
 
     # Test 1: Create a customer with password
     print("\n1. Creating a customer with password...")
+    # Use a unique email for each test run
+    unique_email = f"john.doe.{int(time.time())}@example.com"
+
     customer_data = {
         "first_name": "John",
         "last_name": "Doe",
-        "email": "john.doe@example.com",
+        "email": unique_email,
         "phone_number": "555-0123",
         "password": "securepassword123",
     }
@@ -35,7 +39,7 @@ def test_token_authentication():
 
     # Test 2: Login with correct credentials
     print("\n2. Testing login with correct credentials...")
-    login_data = {"email": "john.doe@example.com", "password": "securepassword123"}
+    login_data = {"email": unique_email, "password": "securepassword123"}
 
     response = requests.post(f"{BASE_URL}/customers/login", json=login_data)
     print(f"Status: {response.status_code}")
@@ -50,7 +54,7 @@ def test_token_authentication():
 
     # Test 3: Login with wrong credentials
     print("\n3. Testing login with wrong credentials...")
-    wrong_login_data = {"email": "john.doe@example.com", "password": "wrongpassword"}
+    wrong_login_data = {"email": unique_email, "password": "wrongpassword"}
 
     response = requests.post(f"{BASE_URL}/customers/login", json=wrong_login_data)
     print(f"Status: {response.status_code}")
