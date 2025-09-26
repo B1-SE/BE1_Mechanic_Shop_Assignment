@@ -139,6 +139,10 @@ def setup_swagger(app):
                     "name": "calculations",
                     "description": "Mathematical calculation operations",
                 },
+                {
+                    "name": "General",
+                    "description": "General API and health-check endpoints",
+                },
             ],
         }
 
@@ -246,8 +250,18 @@ def register_additional_routes(app):
     # API root endpoint
     @app.route("/")
     def index():
-        """API information endpoint."""
-        return {
+        """
+        Get API Information
+        ---
+        tags:
+          - General
+        summary: Get general information about the API and available endpoints.
+        description: Returns a welcome message and a list of available API endpoints.
+        responses:
+          200:
+            description: API information retrieved successfully.
+        """
+        return jsonify({
             "message": "Welcome to the Mechanic Shop API",
             "version": "1.0.0",
             "endpoints": {
@@ -258,27 +272,46 @@ def register_additional_routes(app):
                 "members": "/members",
                 "calculations": "/calculations",
                 "health": "/health",
-                "api_docs": "/docs",
+                "api_docs": "/apidocs",
             },
-        }, 200
+        }), 200
 
     # Health check endpoint
     @app.route("/health")
     def health_check():
         """Simple health check endpoint."""
-        return {
+        """
+        Health Check
+        ---
+        tags:
+          - General
+        summary: Check if the API is running and healthy.
+        responses:
+          200:
+            description: API is healthy.
+        """
+        return jsonify({
             "status": "healthy",
             "message": "Mechanic Shop API is running",
             "timestamp": datetime.now().isoformat(),
-        }, 200
+        }), 200
 
     # Rate limiting demonstration endpoint
     @app.route("/test-rate-limit")
     @limiter.limit("5 per minute")
     def test_rate_limit():
         """
-        Test endpoint to demonstrate rate limiting.
-        Limited to 5 requests per minute per IP.
+        Test Rate Limiting
+        ---
+        tags:
+          - General
+        summary: Test endpoint to demonstrate rate limiting.
+        description: Limited to 5 requests per minute per IP.
+        responses:
+          200:
+            description: Request successful.
+          429:
+            description: Too many requests.
         """
         return (
             jsonify(

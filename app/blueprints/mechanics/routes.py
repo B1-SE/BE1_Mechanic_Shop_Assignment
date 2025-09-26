@@ -6,6 +6,8 @@ from flask import Blueprint, jsonify, request
 from marshmallow import ValidationError
 from app.extensions import db, cache, limiter
 from app.models.mechanic import Mechanic
+from app.models.service_ticket import service_ticket_mechanic
+from sqlalchemy import func, desc, asc
 from .schemas import mechanic_schema, mechanics_schema
 
 # Create mechanic blueprint
@@ -88,31 +90,31 @@ def get_mechanics_by_workload():
                 400,
             )
 
-        # Build subquery to count tickets per mechanic
-        # Using a subquery approach for better compatibility
+        # Efficiently query mechanics with their ticket counts using the database
+        query = (
+            db.session.query(
+                Mechanic, func.count(service_ticket_mechanic.c.service_ticket_id).label("ticket_count")
+            )
+            .outerjoin(service_ticket_mechanic)
+            .group_by(Mechanic.id)
+        )
 
-        # Get all mechanics first
-        all_mechanics = Mechanic.query.all()
-
-        # Count tickets for each mechanic
-        mechanics_with_workload = []
-        for mechanic in all_mechanics:
-            # Count tickets for this mechanic using the relationship
-            ticket_count = len(mechanic.service_tickets)
-
-            mechanic_data = mechanic_schema.dump(mechanic)
-            mechanic_data["ticket_count"] = ticket_count
-            mechanics_with_workload.append(mechanic_data)
-
-        # Sort by ticket count
+        # Apply sorting
         if order == "desc":
-            mechanics_with_workload.sort(key=lambda x: (-x["ticket_count"], x["name"]))
+            query = query.order_by(desc("ticket_count"), Mechanic.name)
         else:
-            mechanics_with_workload.sort(key=lambda x: (x["ticket_count"], x["name"]))
+            query = query.order_by(asc("ticket_count"), Mechanic.name)
 
-        # Apply limit if specified
+        # Apply limit
         if limit and limit > 0:
-            mechanics_with_workload = mechanics_with_workload[:limit]
+            query = query.limit(limit)
+
+        # Format the results
+        results = query.all()
+        mechanics_with_workload = [
+            {**mechanic_schema.dump(mechanic), "ticket_count": ticket_count}
+            for mechanic, ticket_count in results
+        ]
 
         response_data = {
             "mechanics": mechanics_with_workload,
