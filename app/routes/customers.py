@@ -264,7 +264,7 @@ def login():
       - in: body
         name: body
         schema:
-          $ref: '#/definitions/Login'
+          $ref: '#/definitions/LoginCredentials'
     responses:
       200:
         description: Login successful.
