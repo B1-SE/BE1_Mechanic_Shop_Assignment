@@ -266,7 +266,25 @@ def login():
       - in: body
         name: body
         schema:
-          $ref: '#/definitions/LoginCredentials'
+          id: LoginCredentials
+          type: object
+          required:
+            - email
+            - password
+          properties:
+            email:
+              type: string
+              format: email
+              description: "Customer's registered email address."
+              example: "john.doe@example.com"
+            password:
+              type: string
+              description: "Customer's password (minimum 6 characters)."
+              example: "securepassword123"
+    definitions:
+      LoginCredentials:
+        type: object
+        # This definition is now defined inline above
     responses:
       200:
         description: Login successful.
