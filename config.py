@@ -55,7 +55,10 @@ class ProductionConfig(Config):
 
     # Production database URL must be set via an environment variable.
     # Fallback to a local SQLite database for simplicity if not provided.
-    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL") or f"sqlite:///{BASE_DIR}/instance/mechanic_shop_prod.db"
+    SQLALCHEMY_DATABASE_URI = (
+        os.environ.get("DATABASE_URL")
+        or f"sqlite:///{BASE_DIR}/instance/mechanic_shop_prod.db"
+    )
 
     # Ensure the instance folder exists for the production SQLite database
     # This is important for when Gunicorn or other services run the app.
