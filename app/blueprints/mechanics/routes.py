@@ -97,7 +97,8 @@ def get_mechanics_by_workload():
                 func.count(service_ticket_mechanic.c.service_ticket_id).label(
                     "ticket_count"
                 ),
-            ).outerjoin(service_ticket_mechanic)
+            )
+            .outerjoin(service_ticket_mechanic)
             .group_by(Mechanic.id)
         )
 

@@ -259,20 +259,22 @@ def register_additional_routes(app):
             description: API information retrieved successfully.
         """
         return (
-            jsonify({
-                "message": "Welcome to the Mechanic Shop API",
-                "version": "1.0.0",
-                "endpoints": {
-                    "customers": "/customers",
-                    "mechanics": "/mechanics",
-                    "service_tickets": "/service-tickets",
-                    "inventory": "/inventory",
-                    "members": "/members",
-                    "calculations": "/calculations",
-                    "health": "/health",
-                    "api_docs": "/apidocs",
-                },
-            }),
+            jsonify(
+                {
+                    "message": "Welcome to the Mechanic Shop API",
+                    "version": "1.0.0",
+                    "endpoints": {
+                        "customers": "/customers",
+                        "mechanics": "/mechanics",
+                        "service_tickets": "/service-tickets",
+                        "inventory": "/inventory",
+                        "members": "/members",
+                        "calculations": "/calculations",
+                        "health": "/health",
+                        "api_docs": "/apidocs",
+                    },
+                }
+            ),
             200,
         )
 
@@ -291,11 +293,13 @@ def register_additional_routes(app):
             description: API is healthy.
         """
         return (
-            jsonify({
-                "status": "healthy",
-                "message": "Mechanic Shop API is running",
-                "timestamp": datetime.now().isoformat(),
-            }),
+            jsonify(
+                {
+                    "status": "healthy",
+                    "message": "Mechanic Shop API is running",
+                    "timestamp": datetime.now().isoformat(),
+                }
+            ),
             200,
         )
 
@@ -317,11 +321,13 @@ def register_additional_routes(app):
             description: Too many requests.
         """
         return (
-            jsonify({
-                "message": "Rate limiting is working!",
-                "limit": "5 requests per minute",
-                "timestamp": datetime.now().isoformat(),
-            }),
+            jsonify(
+                {
+                    "message": "Rate limiting is working!",
+                    "limit": "5 requests per minute",
+                    "timestamp": datetime.now().isoformat(),
+                }
+            ),
             200,
         )
 
