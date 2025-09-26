@@ -1,6 +1,7 @@
 """
 Application factory for the mechanic shop Flask application.
 """
+
 from flask import Flask, send_from_directory, jsonify
 from sqlalchemy import inspect
 from datetime import datetime
