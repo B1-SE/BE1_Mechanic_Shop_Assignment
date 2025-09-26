@@ -28,10 +28,11 @@ def create_app(config_class=None):
     app = Flask(__name__)
 
     # Load configuration
+    # Ensure we are using a config object, not a class
     if config_class is None:
-        config_class = config["development"]
-
-    app.config.from_object(config_class)
+        app.config.from_object(config["development"]())
+    else:
+        app.config.from_object(config_class)
 
     # Ensure the instance folder exists for SQLite databases
     try:
