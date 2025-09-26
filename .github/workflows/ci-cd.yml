@@ -41,7 +41,7 @@ jobs:
     - name: Test with pytest
       env:
         # Provide a fallback key for tests if the GitHub secret is not set.
-        SECRET_KEY:  update"
+        SECRET_KEY: ${{ secrets.CI_SECRET_KEY || 'a-secure-ci-test-secret-key' }}
       run: pytest tests/ -v --cov=app --cov-report=xml
     
     - name: Upload coverage reports
