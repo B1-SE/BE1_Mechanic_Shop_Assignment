@@ -10,7 +10,8 @@ from app import create_app
 from config import config
 
 # Get the configuration name from the environment variable or default to 'development'
-config_name = os.getenv("FLASK_ENV", "default")  # Ensure a valid config is selected, falling back to default if the env var is invalid
+config_name = os.getenv("FLASK_ENV", "default")
+# Ensure a valid config is selected, falling back to default if the env var is invalid
 app_config = config.get(config_name, config["default"])
 app = create_app(app_config)
 
