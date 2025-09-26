@@ -9,6 +9,7 @@ from app import create_app
 from config import config
 
 # Create the application instance with the production configuration
-application = create_app(config["production"])
+app = create_app(config["production"])
 
 # The 'application' variable is what Gunicorn looks for by default.
+application = app

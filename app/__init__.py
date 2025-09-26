@@ -279,13 +279,13 @@ def register_additional_routes(app):
     # Health check endpoint
     @app.route("/health")
     def health_check():
-        """Simple health check endpoint."""
         """
         Health Check
         ---
         tags:
           - General
         summary: Check if the API is running and healthy.
+        description: Simple health check endpoint.
         responses:
           200:
             description: API is healthy.
@@ -313,14 +313,11 @@ def register_additional_routes(app):
           429:
             description: Too many requests.
         """
-        return (
-            jsonify({
-                "message": "Rate limiting is working!",
-                "limit": "5 requests per minute",
-                "timestamp": datetime.now().isoformat(),
-            }),
-            200,
-        )
+        return jsonify({
+            "message": "Rate limiting is working!",
+            "limit": "5 requests per minute",
+            "timestamp": datetime.now().isoformat(),
+        }), 200
 
     # Favicon endpoint
     @app.route("/favicon.ico")
