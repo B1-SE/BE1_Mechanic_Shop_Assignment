@@ -3,7 +3,7 @@ Customer routes for the mechanic shop application.
 """
 
 from flask import Blueprint, request, jsonify
-from app.extensions import db, limiter, cache
+from app.extensions import db, limiter
 from app.models.customer import Customer
 from app.models.service_ticket import ServiceTicket
 from app.schemas.service_ticket import service_tickets_schema
