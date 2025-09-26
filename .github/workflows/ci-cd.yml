@@ -38,7 +38,9 @@ jobs:
       run: bandit -r app/
 
     - name: Check for vulnerable dependencies with safety
-      run: safety scan || true
+      run: |
+        safety scan || true
+        safety check --bare
     
     - name: Test with pytest
       env:
@@ -50,6 +52,7 @@ jobs:
       uses: codecov/codecov-action@v4
       if: matrix.python-version == '3.11'
       with:
+        token: ${{ secrets.CODECOV_TOKEN }}
         file: ./coverage.xml
         fail_ci_if_error: false
 
