@@ -314,13 +314,11 @@ def register_additional_routes(app):
             description: Too many requests.
         """
         return (
-            jsonify(
-                {
-                    "message": "Rate limiting is working!",
-                    "limit": "5 requests per minute",
-                    "timestamp": datetime.now().isoformat(),
-                }
-            ),
+            jsonify({
+                "message": "Rate limiting is working!",
+                "limit": "5 requests per minute",
+                "timestamp": datetime.now().isoformat(),
+            }),
             200,
         )
 

@@ -93,9 +93,9 @@ def get_mechanics_by_workload():
         # Efficiently query mechanics with their ticket counts using the database
         query = (
             db.session.query(
-                Mechanic, func.count(service_ticket_mechanic.c.service_ticket_id).label("ticket_count")
-            )
-            .outerjoin(service_ticket_mechanic)
+                Mechanic,
+                func.count(service_ticket_mechanic.c.service_ticket_id).label("ticket_count"),
+            ).outerjoin(service_ticket_mechanic)
             .group_by(Mechanic.id)
         )
 
