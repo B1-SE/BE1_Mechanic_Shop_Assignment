@@ -11,9 +11,8 @@ from config import config
 
 # Get the configuration name from the environment variable or default to 'development'
 
-config_name = os.getenv("FLASK_ENV", "development")
-# Use the specified config, or fall back to the default if the name is invalid
-app_config = config.get(config_name, config["default"])
+config_name = os.getenv("FLASK_ENV", "default")
+app_config = config.get(config_name) or config["default"]
 app = create_app(app_config)
 
 if __name__ == "__main__":
