@@ -264,7 +264,7 @@ def login():
       - in: body
         name: body
         schema:
-          $ref: '#/definitions/LoginCredentials'
+          $ref: '#/definitions/Login'
     responses:
       200:
         description: Login successful.
@@ -273,7 +273,8 @@ def login():
     """
     """Customer login"""
     try:
-        data = request.get_json()
+        # Use silent=True to prevent an exception on an empty request body
+        data = request.get_json(silent=True)
 
         if not data or "email" not in data or "password" not in data:
             return jsonify({"error": "Email and password required"}), 400
