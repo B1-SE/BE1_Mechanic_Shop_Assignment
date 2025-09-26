@@ -33,6 +33,11 @@ def create_app(config_class=None):
 
     app.config.from_object(config_class)
 
+    # Ensure the instance folder exists for SQLite databases
+    try:
+        os.makedirs(app.instance_path, exist_ok=True)
+    except OSError:
+        pass  # Ignore errors if the folder already exists or can't be created
     # Configure caching (using simple in-memory cache for development)
     app.config["CACHE_TYPE"] = "simple"
     app.config["CACHE_DEFAULT_TIMEOUT"] = 300  # 5 minutes default cache timeout
@@ -155,42 +160,23 @@ def setup_swagger(app):
 
 def register_blueprints(app):
     """Register application blueprints"""
+    import importlib
 
-    # Register main API blueprints
-    try:
-        from app.routes.calculations import calculations_bp
+    blueprints_to_register = [
+        ("calculations", "/calculations"),
+        ("customers", "/customers"),
+        ("inventory", "/inventory"),
+        ("mechanics", "/mechanics"),
+        ("service_tickets", "/service-tickets"),
+    ]
 
-        app.register_blueprint(calculations_bp, url_prefix="/calculations")
-    except ImportError as e:
-        print(f"Warning: Could not import calculations blueprint: {e}")
-
-    try:
-        from app.routes.customers import customers_bp
-
-        app.register_blueprint(customers_bp, url_prefix="/customers")
-    except ImportError as e:
-        print(f"Warning: Could not import customers blueprint: {e}")
-
-    try:
-        from app.routes.inventory import inventory_bp
-
-        app.register_blueprint(inventory_bp, url_prefix="/inventory")
-    except ImportError as e:
-        print(f"Warning: Could not import inventory blueprint: {e}")
-
-    try:
-        from app.routes.mechanics import mechanics_bp
-
-        app.register_blueprint(mechanics_bp, url_prefix="/mechanics")
-    except ImportError as e:
-        print(f"Warning: Could not import mechanics blueprint: {e}")
-
-    try:
-        from app.routes.service_tickets import service_tickets_bp
-
-        app.register_blueprint(service_tickets_bp, url_prefix="/service-tickets")
-    except ImportError as e:
-        print(f"Warning: Could not import service_tickets blueprint: {e}")
+    for bp_name, url_prefix in blueprints_to_register:
+        try:
+            module = importlib.import_module(f"app.routes.{bp_name}")
+            blueprint = getattr(module, f"{bp_name}_bp")
+            app.register_blueprint(blueprint, url_prefix=url_prefix)
+        except (ImportError, AttributeError) as e:
+            print(f"Warning: Could not register blueprint '{bp_name}': {e}")
 
     # Create members blueprint as alias to customers - FIXED parameter handling
     try:
