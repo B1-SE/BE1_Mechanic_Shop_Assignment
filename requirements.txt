@@ -11,3 +11,6 @@ python-jose[cryptography]
 Flask-Marshmallow
 marshmallow-sqlalchemy
 Flask-Cors
+
+# API Documentation
+flasgger
