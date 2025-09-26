@@ -101,7 +101,7 @@ def create_customer():
         data = request.get_json()
         if not data:
             return jsonify({"error": "Invalid JSON or empty request body"}), 400
-            
+
         # Validate required fields
         required_fields = ["first_name", "last_name", "email", "password"]
         for field in required_fields:
@@ -291,7 +291,12 @@ def login():
         print(f"Has password hash: {bool(customer.password_hash)}")
 
         if not customer.password_hash:
-            return jsonify({"error": "Account not properly configured for password login"}), 401
+            return (
+                jsonify(
+                    {"error": "Account not properly configured for password login"}
+                ),
+                401,
+            )
 
         if not customer.check_password(data["password"]):
             return jsonify({"error": "Invalid credentials"}), 401
