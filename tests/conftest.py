@@ -1,134 +1,34 @@
-"""
-Test configuration and fixtures
+git checkout -b fix-unused-import"""
+Pytest fixtures for the Flask application.
+
+This file provides reusable components for testing, such as the Flask app
+instance and a test client, ensuring a clean and consistent test environment.
 """
 
 import pytest
 from app import create_app
 from app.extensions import db
-from app.models.customer import Customer
-from app.models.mechanic import Mechanic
-from app.models.inventory import InventoryItem
+from config import config
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def app():
-    """Create application for testing"""
-    app = create_app()
-    app.config.update(
-        {
-            "TESTING": True,
-            "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
-            "WTF_CSRF_ENABLED": False,
-        }
-    )
+    """Create and configure a new app instance for each test module."""
+    # Create a test app instance
+    app = create_app(config["testing"])
 
+    # Establish an application context
     with app.app_context():
-        print("Creating database tables...")
+        # Create the database and the database table(s)
         db.create_all()
-        print("Database tables created successfully!")
 
-    yield app
+        yield app  # this is where the testing happens!
 
-    with app.app_context():
-        db.drop_all()
-
-
-@pytest.fixture(scope="function")
-def clean_database(app):
-    """Clean database before each test"""
-    with app.app_context():
-        db.drop_all()
-        db.create_all()
-    yield
-    with app.app_context():
+        # Tearing down the database
         db.session.remove()
+        db.drop_all()
 
-
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="module")
 def client(app):
-    """Create test client"""
+    """A test client for the app."""
     return app.test_client()
-
-
-@pytest.fixture(scope="function")
-def init_database(app, clean_database):
-    """Initialize database with test data"""
-    with app.app_context():
-        # Create test customer
-        # The 'clean_database' fixture ensures the DB is empty before this runs.
-        customer = Customer(
-            first_name="John",
-            last_name="Doe",
-            email="john.doe@test.com",
-            phone_number="555-0101",
-            address="123 Test St",
-        )
-        customer.set_password("password123")
-        db.session.add(customer)
-
-        # Create a second test customer
-        customer2 = Customer(
-            first_name="Jane",
-            last_name="Smith",
-            email="jane.smith@test.com",
-            phone_number="555-0103",
-            address="456 Test Ave",
-        )
-        customer2.set_password("password456")
-        db.session.add(customer2)
-
-        # Create test mechanic - FIXED: Using shop.com email to match test expectations
-        mechanic = Mechanic(
-            name="Mike Johnson",
-            email="mike.johnson@shop.com",  # Changed from @test.com to @shop.com
-            phone_number="555-0102",
-            hourly_rate=75.00,
-            is_active=True,
-            specialty="Engine, Brakes",
-        )
-        db.session.add(mechanic)
-
-        # Create a second test mechanic
-        mechanic2 = Mechanic(
-            name="Sarah Lee",
-            email="sarah.lee@shop.com",
-            phone_number="555-0104",
-            hourly_rate=80.00,
-            is_active=True,
-            specialty="Transmission, Electrical",
-        )
-        db.session.add(mechanic2)
-
-        # Create test inventory items
-        inventory_item1 = InventoryItem(
-            name="Engine Oil",
-            description="5W-30 Engine Oil",
-            quantity=50,
-            price=25.99,
-            supplier="AutoParts Inc",
-            category="Fluids",
-            reorder_level=10,
-        )
-        db.session.add(inventory_item1)
-
-        inventory_item2 = InventoryItem(
-            name="Brake Pads",
-            description="Front brake pads",
-            quantity=20,
-            price=45.99,
-            supplier="BrakeMax",
-            category="Brakes",
-            reorder_level=5,
-        )
-        db.session.add(inventory_item2)
-
-        # Commit all changes (skip service ticket for now to avoid constraint issues)
-        db.session.commit()
-
-        return {
-            "customer": customer,
-            "customer2": customer2,
-            "mechanic": mechanic,
-            "mechanic2": mechanic2,
-            "inventory_items": [inventory_item1, inventory_item2],
-        }

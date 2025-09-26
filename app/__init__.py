@@ -43,10 +43,12 @@ def create_app(config_name="production"):
     Swagger(app, template=swagger_template)
 
     # --- Register Blueprints ---
-    # Import and register your blueprints here to organize your routes.
-    # Example:
-    # from .api.customers import customers_bp
-    # app.register_blueprint(customers_bp, url_prefix='/customers')
+    # This is the most critical missing step. You must register your API routes.
+    from .api.customers import customers_bp
+    from .api.mechanics import mechanics_bp
+    
+    app.register_blueprint(customers_bp, url_prefix='/customers')
+    app.register_blueprint(mechanics_bp, url_prefix='/mechanics')
 
     # --- Root and Health Check Routes ---
     @app.route("/")

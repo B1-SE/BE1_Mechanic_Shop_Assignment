@@ -1,125 +1,89 @@
 """
-Unit tests for the Inventory API endpoints.
+Pytest-based tests for Customer CRUD operations.
+
+These tests use the Flask test client and pytest fixtures to ensure
+fast and isolated testing of the customer endpoints.
 """
-import unittest
-from unittest.mock import patch
-from tests.test_base import BaseTestCase
-from app.models.inventory import Inventory
-from app.extensions import db
+
+import time
 
 
-class TestInventoryAPI(BaseTestCase):
-    """Test cases for the Inventory API endpoints."""
+def test_root_and_health_endpoints(client):
+    """Test the root and health check endpoints."""
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.json["message"] == "Welcome to the Mechanic Shop API!"
 
-    def test_get_all_inventory_success(self):
-        """Test getting all inventory items - positive case"""
-        item = Inventory(name="Test Part", price=10.0)
-        db.session.add(item)
-        db.session.commit()
-
-        response = self.client.get("/inventory/")
-        self.assertEqual(response.status_code, 200)
-        data = self.get_json_response(response)
-        self.assertEqual(len(data["items"]), 1)
-        self.assertEqual(data["items"][0]["name"], "Test Part")
-
-    def test_get_inventory_by_id_success(self):
-        """Test getting inventory item by ID - positive case"""
-        item = Inventory(id=1, name="Test Part", price=10.0)
-        db.session.add(item)
-        db.session.commit()
-
-        response = self.client.get("/inventory/1")
-        self.assertEqual(response.status_code, 200)
-        data = self.get_json_response(response)
-        self.assertEqual(data["name"], "Test Part")
-
-    def test_get_inventory_by_id_not_found(self):
-        """Test getting non-existent inventory item - negative case"""
-        response = self.client.get("/inventory/999")
-        self.assertEqual(response.status_code, 404)
-
-    @patch('app.blueprints.inventory.routes.mechanic_token_required', lambda f: lambda *args, **kwargs: f(mechanic_id=1, *args, **kwargs))
-    def test_create_inventory_item_success(self):
-        """Test creating inventory item - positive case"""
-        item_data = {
-            "name": "Air Filter",
-            "price": 45.99,
-        }
-        response = self.client.post(
-            "/inventory/", json=item_data, content_type="application/json"
-        )
-        self.assertEqual(response.status_code, 201)
-        data = self.get_json_response(response)
-        self.assertEqual(data["name"], "Air Filter")
-
-    @patch('app.blueprints.inventory.routes.mechanic_token_required', lambda f: lambda *args, **kwargs: f(mechanic_id=1, *args, **kwargs))
-    def test_create_inventory_item_missing_required_field(self):
-        """Test creating inventory item without required field - negative case"""
-        item_data = {"name": "Test Item"} # Missing price
-        response = self.client.post(
-            "/inventory/", json=item_data, content_type="application/json"
-        )
-        self.assertEqual(response.status_code, 400)
-
-    @patch('app.blueprints.inventory.routes.mechanic_token_required', lambda f: lambda *args, **kwargs: f(mechanic_id=1, *args, **kwargs))
-    def test_create_inventory_item_duplicate_name(self):
-        """Test creating inventory item with a duplicate name."""
-        item = Inventory(name="Existing Part", price=10.0)
-        db.session.add(item)
-        db.session.commit()
-        
-        item_data = {"name": "Existing Part", "price": 20.0}
-        response = self.client.post(
-            "/inventory/", json=item_data, content_type="application/json"
-        )
-        self.assertEqual(response.status_code, 409)
-
-    @patch('app.blueprints.inventory.routes.mechanic_token_required', lambda f: lambda *args, **kwargs: f(mechanic_id=1, *args, **kwargs))
-    def test_update_inventory_item_success(self):
-        """Test updating inventory item - positive case"""
-        item = Inventory(id=1, name="Old Name", price=10.0)
-        db.session.add(item)
-        db.session.commit()
-
-        update_data = {"name": "New Name", "price": 29.99}
-        response = self.client.put(
-            "/inventory/1", json=update_data, content_type="application/json"
-        )
-        self.assertEqual(response.status_code, 200)
-        data = self.get_json_response(response)
-        self.assertEqual(data["name"], "New Name")
-        self.assertEqual(data["price"], 29.99)
-
-    @patch('app.blueprints.inventory.routes.mechanic_token_required', lambda f: lambda *args, **kwargs: f(mechanic_id=1, *args, **kwargs))
-    def test_update_inventory_item_not_found(self):
-        """Test updating non-existent inventory item - negative case"""
-        update_data = {"name": "New Name"}
-        response = self.client.put(
-            "/inventory/999", json=update_data, content_type="application/json"
-        )
-        self.assertEqual(response.status_code, 404)
-
-    @patch('app.blueprints.inventory.routes.mechanic_token_required', lambda f: lambda *args, **kwargs: f(mechanic_id=1, *args, **kwargs))
-    def test_delete_inventory_item_success(self):
-        """Test deleting inventory item - positive case"""
-        item = Inventory(id=1, name="To Delete", price=10.0)
-        db.session.add(item)
-        db.session.commit()
-
-        response = self.client.delete("/inventory/1")
-        self.assertEqual(response.status_code, 200)
-
-        # Verify deletion
-        deleted_item = db.session.get(Inventory, 1)
-        self.assertIsNone(deleted_item)
-
-    @patch('app.blueprints.inventory.routes.mechanic_token_required', lambda f: lambda *args, **kwargs: f(mechanic_id=1, *args, **kwargs))
-    def test_delete_inventory_item_not_found(self):
-        """Test deleting non-existent inventory item - negative case"""
-        response = self.client.delete("/inventory/999")
-        self.assertEqual(response.status_code, 404)
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json["status"] == "ok"
 
 
-if __name__ == "__main__":
-    unittest.main()
+def test_customer_crud_flow(client):
+    """Test the full CRUD lifecycle for a customer."""
+    # --- 1. CREATE Customer ---
+    unique_email = f"test.user.{int(time.time())}@example.com"
+    customer_data = {
+        "first_name": "Test",
+        "last_name": "User",
+        "email": unique_email,
+        "phone_number": "555-1234",
+        "password": "a-secure-password",
+    }
+    response = client.post("/customers/", json=customer_data)
+    assert response.status_code == 201
+    created_customer = response.json
+    customer_id = created_customer["id"]
+    assert created_customer["first_name"] == "Test"
+
+    # --- 2. LOGIN to get a token ---
+    login_data = {"email": unique_email, "password": "a-secure-password"}
+    response = client.post("/customers/login", json=login_data)
+    assert response.status_code == 200
+    token = response.json["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # --- 3. READ All Customers ---
+    response = client.get("/customers/")
+    assert response.status_code == 200
+    # The response is paginated, so we check the 'customers' key
+    assert isinstance(response.json["customers"], list)
+    assert len(response.json["customers"]) > 0
+
+    # --- 4. READ One Customer by ID ---
+    response = client.get(f"/customers/{customer_id}")
+    assert response.status_code == 200
+    assert response.json["email"] == unique_email
+
+    # --- 5. UPDATE Customer ---
+    update_data = {"first_name": "Updated"}
+    response = client.put(f"/customers/{customer_id}", json=update_data, headers=headers)
+    assert response.status_code == 200
+    assert response.json["first_name"] == "Updated"
+
+    # --- 6. Attempt to UPDATE another customer (Authorization Test) ---
+    # Create another customer to test against
+    other_customer_data = {
+        "first_name": "Other",
+        "last_name": "User",
+        "email": f"other.user.{int(time.time())}@example.com",
+        "phone_number": "555-5678",
+        "password": "another-password",
+    }
+    res = client.post("/customers/", json=other_customer_data)
+    other_customer_id = res.json["id"]
+
+    # Use the first user's token to try to modify the second user
+    response = client.put(
+        f"/customers/{other_customer_id}", json={"first_name": "Hacker"}, headers=headers
+    )
+    assert response.status_code == 403  # Forbidden
+
+    # --- 7. DELETE Customer ---
+    response = client.delete(f"/customers/{customer_id}", headers=headers)
+    assert response.status_code == 200
+    assert "successfully deleted" in response.json["message"]
+
+    # --- 8. Verify Deletion ---
+    response = client.get(f"/customers/{customer_id}")
+    assert response.status_code == 404  # Not Found
