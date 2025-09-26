@@ -16,5 +16,6 @@ app_config = config.get(config_name, config["default"])
 app = create_app(app_config)
 
 if __name__ == "__main__":
-    # Run the app. The host is set to '0.0.0.0' to be accessible on your network.
+    # This block runs the Flask development server and is only executed
+    # when the script is run directly (e.g., `python run.py`).
     app.run(host="0.0.0.0")
