@@ -5,7 +5,7 @@ Member routes - wrapping customer functionality for members
 from flask import Blueprint, request, jsonify
 from app.extensions import db, limiter
 from app.models.customer import Customer
-from app.schemas.customer import customer_schema, customers_schema
+from app.schemas.customer import customer_schema, customers_schema, LoginResponseSchema
 from app.utils.auth import generate_token, token_required
 from app.utils.util import validate_email
 
@@ -19,7 +19,7 @@ def get_members():
     try:
         customers = Customer.query.all()
         result = customers_schema.dump(customers)
-        return jsonify(result), 200
+        return jsonify({"members": result, "count": len(result)}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -151,16 +151,14 @@ def member_login():
 
         token = generate_token(customer.id, customer.email)
 
-        return (
-            jsonify(
-                {
-                    "message": "Login successful",
-                    "member": customer_schema.dump(customer),
-                    "token": token,
-                }
-            ),
-            200,
-        )
+        login_response_schema = LoginResponseSchema()
+        response_data = {
+            "message": "Login successful",
+            "customer": customer,
+            "token": token,
+        }
+
+        return login_response_schema.dump(response_data), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

@@ -36,6 +36,7 @@ def test_customer_crud():
         "last_name": "Doe",
         "email": unique_email,
         "phone_number": "555-0123",
+        "password": "password123",
     }
 
     try:
@@ -52,6 +53,24 @@ def test_customer_crud():
             return
     except Exception as e:
         print(f"❌ CREATE error: {e}")
+        return
+
+    # Login to get a token for protected routes
+    print("\n=== Testing LOGIN ===")
+    login_data = {"email": unique_email, "password": "password123"}
+    token = None
+    try:
+        response = requests.post(f"{BASE_URL}/customers/login", json=login_data)
+        print(f"Status Code: {response.status_code}")
+        if response.status_code == 200:
+            token = response.json().get("token")
+            print("✅ LOGIN successful - Token obtained")
+        else:
+            print("❌ LOGIN failed")
+            print(f"Response: {response.text}")
+            return
+    except Exception as e:
+        print(f"❌ LOGIN error: {e}")
         return
 
     # Test READ all customers
@@ -87,8 +106,10 @@ def test_customer_crud():
         "phone_number": "555-9876",
     }
 
+    headers = {"Authorization": f"Bearer {token}"}
+
     try:
-        response = requests.put(f"{BASE_URL}/customers/{customer_id}", json=update_data)
+        response = requests.put(f"{BASE_URL}/customers/{customer_id}", json=update_data, headers=headers)
         print(f"Status Code: {response.status_code}")
         if response.status_code == 200:
             updated_customer = response.json()
@@ -105,7 +126,7 @@ def test_customer_crud():
     # Test DELETE customer
     print(f"\n=== Testing DELETE Customer ({customer_id}) ===")
     try:
-        response = requests.delete(f"{BASE_URL}/customers/{customer_id}")
+        response = requests.delete(f"{BASE_URL}/customers/{customer_id}", headers=headers)
         print(f"Status Code: {response.status_code}")
         if response.status_code == 200:
             print("✅ DELETE successful")

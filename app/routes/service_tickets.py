@@ -46,7 +46,7 @@ def create_service_ticket():
         data = request.get_json()
 
         # Validate required fields
-        required_fields = ["customer_id", "mechanic_id", "vehicle_info", "description"]
+        required_fields = ["customer_id", "vehicle_info", "description"]
         for field in required_fields:
             if field not in data:
                 return jsonify({"error": f"Missing required field: {field}"}), 400
@@ -54,7 +54,6 @@ def create_service_ticket():
         # Create new service ticket
         ticket = ServiceTicket(
             customer_id=data["customer_id"],
-            mechanic_id=data["mechanic_id"],
             vehicle_info=data["vehicle_info"],
             description=data["description"],
             estimated_cost=data.get("estimated_cost", 0.0),

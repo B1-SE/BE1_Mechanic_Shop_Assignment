@@ -25,6 +25,25 @@ class CustomerSchema(SQLAlchemyAutoSchema):
     password = fields.Str(load_only=True, validate=validate.Length(min=6))
 
 
+class LoginSchema(SQLAlchemyAutoSchema):
+    """Schema for customer login, requiring only email and password."""
+
+    class Meta:
+        # No model is needed as this is for input validation only
+        fields = ("email", "password")
+
+    email = fields.Email(required=True)
+    password = fields.Str(required=True, validate=validate.Length(min=6))
+
+
+class LoginResponseSchema(SQLAlchemyAutoSchema):
+    """Schema for the successful login response."""
+
+    message = fields.Str(required=True)
+    token = fields.Str(required=True)
+    customer = fields.Nested(CustomerSchema, required=True)
+
+
 # Schema instances
 customer_schema = CustomerSchema()
 customers_schema = CustomerSchema(many=True)

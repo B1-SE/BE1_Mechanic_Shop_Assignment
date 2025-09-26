@@ -164,68 +164,21 @@ def register_blueprints(app):
     import importlib
 
     blueprints_to_register = [
-        ("calculations", "/calculations"),
-        ("customers", "/customers"),
-        ("inventory", "/inventory"),
-        ("mechanics", "/mechanics"),
-        ("service_tickets", "/service-tickets"),
+        ("customers", "/customers", "customers_bp"),
+        ("members", "/members", "members_bp"),
+        ("mechanics", "/mechanics", "mechanics_bp"),
+        ("service_tickets", "/service-tickets", "service_tickets_bp"),
+        ("inventory", "/inventory", "inventory_bp"),
+        ("calculations", "/calculations", "calculations_bp"),
     ]
 
-    for bp_name, url_prefix in blueprints_to_register:
+    for bp_name, url_prefix, bp_variable in blueprints_to_register:
         try:
             module = importlib.import_module(f"app.routes.{bp_name}")
-            blueprint = getattr(module, f"{bp_name}_bp")
+            blueprint = getattr(module, bp_variable)
             app.register_blueprint(blueprint, url_prefix=url_prefix)
-        except (ImportError, AttributeError) as e:
-            print(f"Warning: Could not register blueprint '{bp_name}': {e}")
-
-    # Create members blueprint as alias to customers - FIXED parameter handling
-    try:
-        members_bp = Blueprint("members", __name__)
-
-        # Register members routes that delegate to customers
-        @members_bp.route("/", methods=["GET"])
-        def get_members():
-            from app.routes.customers import get_all_customers
-
-            return get_all_customers()
-
-        @members_bp.route("/", methods=["POST"])
-        def create_member():
-            from app.routes.customers import create_customer
-
-            return create_customer()
-
-        @members_bp.route("/<int:member_id>", methods=["GET"])
-        def get_member(member_id):
-            from app.routes.customers import get_customer
-
-            return get_customer(member_id)
-
-        @members_bp.route("/<int:member_id>", methods=["PUT"])
-        def update_member(member_id):
-            from app.routes.customers import update_customer
-
-            # The update_customer function expects `current_customer` from the token
-            # The token_required decorator will handle this when the request is processed
-            return update_customer(customer_id=member_id)
-
-        @members_bp.route("/<int:member_id>", methods=["DELETE"])
-        def delete_member(member_id):
-            from app.routes.customers import delete_customer
-
-            return delete_customer(customer_id=member_id)
-
-        @members_bp.route("/login", methods=["POST"])
-        def member_login():
-            from app.routes.customers import login
-
-            return login()
-
-        app.register_blueprint(members_bp, url_prefix="/members")
-
-    except ImportError as e:
-        print(f"Warning: Could not create members blueprint: {e}")
+        except (ImportError, AttributeError, KeyError) as e:
+            print(f"Warning: Could not register blueprint '{bp_name}' from 'app.routes.{bp_name}': {e}")
 
 
 def register_additional_routes(app):
