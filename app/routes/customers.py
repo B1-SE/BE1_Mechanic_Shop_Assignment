@@ -278,7 +278,12 @@ def login():
         # Use silent=True to prevent an exception on an empty request body
         data = request.get_json(silent=True)
 
-        if not data or "email" not in data or "password" not in data:
+        if (
+            not data
+            or not data.get("email")
+            or not data.get("password")
+            or not isinstance(data["email"], str)
+        ):
             return jsonify({"error": "Email and password required"}), 400
 
         customer = Customer.query.filter_by(email=data["email"]).first()
