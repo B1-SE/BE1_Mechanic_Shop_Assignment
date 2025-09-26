@@ -120,10 +120,7 @@ def setup_swagger(app):
                     "type": "apiKey",
                     "name": "Authorization",
                     "in": "header",
-                    "description": (
-                        "JWT Authorization header using the Bearer scheme. "
-                        "Example: 'Authorization: Bearer {token}'"
-                    ),
+                    "description": "JWT Authorization header using the Bearer scheme. Example: 'Authorization: Bearer {token}'",
                 }
             },
             "tags": [
@@ -261,20 +258,23 @@ def register_additional_routes(app):
           200:
             description: API information retrieved successfully.
         """
-        return jsonify({
-            "message": "Welcome to the Mechanic Shop API",
-            "version": "1.0.0",
-            "endpoints": {
-                "customers": "/customers",
-                "mechanics": "/mechanics",
-                "service_tickets": "/service-tickets",
-                "inventory": "/inventory",
-                "members": "/members",
-                "calculations": "/calculations",
-                "health": "/health",
-                "api_docs": "/apidocs",
-            },
-        }), 200
+        return (
+            jsonify({
+                "message": "Welcome to the Mechanic Shop API",
+                "version": "1.0.0",
+                "endpoints": {
+                    "customers": "/customers",
+                    "mechanics": "/mechanics",
+                    "service_tickets": "/service-tickets",
+                    "inventory": "/inventory",
+                    "members": "/members",
+                    "calculations": "/calculations",
+                    "health": "/health",
+                    "api_docs": "/apidocs",
+                },
+            }),
+            200,
+        )
 
     # Health check endpoint
     @app.route("/health")
@@ -290,11 +290,14 @@ def register_additional_routes(app):
           200:
             description: API is healthy.
         """
-        return jsonify({
-            "status": "healthy",
-            "message": "Mechanic Shop API is running",
-            "timestamp": datetime.now().isoformat(),
-        }), 200
+        return (
+            jsonify({
+                "status": "healthy",
+                "message": "Mechanic Shop API is running",
+                "timestamp": datetime.now().isoformat(),
+            }),
+            200,
+        )
 
     # Rate limiting demonstration endpoint
     @app.route("/test-rate-limit")
@@ -313,11 +316,14 @@ def register_additional_routes(app):
           429:
             description: Too many requests.
         """
-        return jsonify({
-            "message": "Rate limiting is working!",
-            "limit": "5 requests per minute",
-            "timestamp": datetime.now().isoformat(),
-        }), 200
+        return (
+            jsonify({
+                "message": "Rate limiting is working!",
+                "limit": "5 requests per minute",
+                "timestamp": datetime.now().isoformat(),
+            }),
+            200,
+        )
 
     # Favicon endpoint
     @app.route("/favicon.ico")
