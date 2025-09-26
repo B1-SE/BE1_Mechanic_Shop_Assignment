@@ -37,8 +37,8 @@ jobs:
     - name: Security scan with bandit
       run: bandit -r app/
 
-    - name: Check for vulnerable dependencies with safety
-      run: safety check --key ${{ secrets.SAFETY_API_KEY }} --bare
+    - name: Run Safety vulnerability scan
+      run: safety scan --key ${{ secrets.SAFETY_API_KEY }} --bare
     
     - name: Test with pytest
       env:

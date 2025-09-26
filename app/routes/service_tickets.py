@@ -5,6 +5,7 @@ Service ticket routes for the mechanic shop application.
 from flask import Blueprint, request, jsonify
 from app.extensions import db, limiter
 from app.models.service_ticket import ServiceTicket
+from app.models.mechanic import Mechanic
 
 # Create service tickets blueprint
 service_tickets_bp = Blueprint("service_tickets", __name__)
@@ -66,6 +67,39 @@ def create_service_ticket():
         db.session.commit()
 
         return jsonify(ticket.to_dict()), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+
+@service_tickets_bp.route("/<int:ticket_id>/edit", methods=["PUT"])
+@limiter.limit("50 per minute")
+def edit_ticket_mechanics(ticket_id):
+    """Add or remove mechanics from a service ticket"""
+    try:
+        ticket = db.session.get(ServiceTicket, ticket_id)
+        if not ticket:
+            return jsonify({"error": "Service ticket not found"}), 404
+
+        data = request.get_json()
+        add_ids = data.get("add_ids", [])
+        remove_ids = data.get("remove_ids", [])
+
+        # Add mechanics
+        for mechanic_id in add_ids:
+            mechanic = db.session.get(Mechanic, mechanic_id)
+            if mechanic and mechanic not in ticket.mechanics:
+                ticket.mechanics.append(mechanic)
+
+        # Remove mechanics
+        for mechanic_id in remove_ids:
+            mechanic = db.session.get(Mechanic, mechanic_id)
+            if mechanic and mechanic in ticket.mechanics:
+                ticket.mechanics.remove(mechanic)
+
+        db.session.commit()
+        return jsonify(ticket.to_dict()), 200
 
     except Exception as e:
         db.session.rollback()

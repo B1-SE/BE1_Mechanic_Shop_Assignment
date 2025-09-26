@@ -93,13 +93,11 @@ def setup_swagger(app):
         # Use flasgger instead of flask_swagger
         from flasgger import Swagger
 
-        host = "localhost:5000"
-        schemes = ["http"]
-        if not app.config.get("DEBUG", False):
-            host = (
-                os.environ.get("RENDER_EXTERNAL_HOSTNAME")
-                or "mechanic-shop.onrender.com"
-            )
+        if app.config.get("DEBUG"):
+            host = "localhost:5000"
+            schemes = ["http"]
+        else:
+            host = os.environ.get("RENDER_EXTERNAL_HOSTNAME", "mechanic-shop.onrender.com")
             schemes = ["https"]
 
         swagger_template = {
@@ -160,26 +158,18 @@ def setup_swagger(app):
 
 def register_blueprints(app):
     """Register application blueprints"""
-    import importlib
-
-    blueprints_to_register = [
-        ("customers", "/customers", "customers_bp"),
-        ("members", "/members", "members_bp"),
-        ("mechanics", "/mechanics", "mechanics_bp"),
-        ("service_tickets", "/service-tickets", "service_tickets_bp"),
-        ("inventory", "/inventory", "inventory_bp"),
-        ("calculations", "/calculations", "calculations_bp"),
-    ]
-
-    for bp_name, url_prefix, bp_variable in blueprints_to_register:
-        try:
-            module = importlib.import_module(f"app.routes.{bp_name}")
-            blueprint = getattr(module, bp_variable)
-            app.register_blueprint(blueprint, url_prefix=url_prefix)
-        except (ImportError, AttributeError, KeyError) as e:
-            print(
-                f"Warning: Could not register blueprint '{bp_name}' from 'app.routes.{bp_name}': {e}"
-            )
+    from app.blueprints.customers.routes import customers_bp
+    from app.blueprints.members.routes import members_bp
+    from app.blueprints.mechanics import mechanics_bp
+    from app.blueprints.service_tickets import service_tickets_bp
+    from app.blueprints.inventory.routes import inventory_bp
+    from app.blueprints.calculations.routes import calculations_bp
+    app.register_blueprint(customers_bp, url_prefix="/customers")
+    app.register_blueprint(members_bp, url_prefix="/members")
+    app.register_blueprint(mechanics_bp, url_prefix="/mechanics")
+    app.register_blueprint(service_tickets_bp, url_prefix="/service-tickets")
+    app.register_blueprint(inventory_bp, url_prefix="/inventory")
+    app.register_blueprint(calculations_bp, url_prefix="/calculations")
 
 
 def register_additional_routes(app):

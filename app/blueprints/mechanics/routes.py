@@ -155,6 +155,75 @@ def get_mechanics():
     return jsonify(mechanics_schema.dump(mechanics)), 200
 
 
+@mechanics_bp.route("/by-workload", methods=["GET"])
+def get_mechanics_by_workload():
+    """
+    Get mechanics ordered by the number of service tickets they've worked on.
+
+    Query Parameters:
+    - order: Sort order (asc, desc) (default: desc - most tickets first)
+    - limit: Maximum number of mechanics to return (default: all)
+
+    Returns mechanics with their ticket counts, sorted by workload.
+    This endpoint is useful for:
+    - Identifying the most experienced mechanics
+    - Load balancing ticket assignments
+    - Performance reviews and workload analysis
+    """
+    try:
+        # Get query parameters
+        order = request.args.get("order", "desc").lower()
+        limit = request.args.get("limit", type=int)
+
+        # Validate order parameter
+        if order not in ["asc", "desc"]:
+            return (
+                jsonify(
+                    {
+                        "error": "Invalid order",
+                        "message": 'order must be "asc" or "desc"',
+                    }
+                ),
+                400,
+            )
+
+        # Efficiently query mechanics with their ticket counts using the database
+        query = (
+            db.session.query(
+                Mechanic,
+                func.count(service_ticket_mechanic.c.service_ticket_id).label(
+                    "ticket_count"
+                ),
+            )
+            .outerjoin(service_ticket_mechanic)
+            .group_by(Mechanic.id)
+        )
+
+        # Apply sorting
+        if order == "desc":
+            query = query.order_by(desc("ticket_count"), Mechanic.name)
+        else:
+            query = query.order_by(asc("ticket_count"), Mechanic.name)
+
+        # Apply limit
+        if limit and limit > 0:
+            query = query.limit(limit)
+
+        # Format the results
+        results = query.all()
+        mechanics_with_workload = [
+            {**mechanic_schema.dump(mechanic), "ticket_count": ticket_count}
+            for mechanic, ticket_count in results
+        ]
+
+        return jsonify(mechanics_with_workload), 200
+
+    except Exception as e:
+        return (
+            jsonify({"error": "Failed to retrieve mechanics by workload", "message": str(e)}),
+            500,
+        )
+
 @mechanics_bp.route("/<int:mechanic_id>", methods=["GET"])
 def get_mechanic(mechanic_id):
     """Get a single mechanic by ID."""
