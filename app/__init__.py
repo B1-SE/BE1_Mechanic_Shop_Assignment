@@ -54,6 +54,9 @@ def create_app(config_class=None):
     # Register blueprints
     register_blueprints(app)
 
+    # Register additional routes (like /health, /)
+    register_additional_routes(app)
+
     # Create database tables
     with app.app_context():
         inspector = inspect(db.engine)
@@ -76,9 +79,6 @@ def create_app(config_class=None):
     # Only register Swagger in non-testing environments
     if not app.config.get("TESTING", False):
         setup_swagger(app)
-
-    # Register additional routes
-    register_additional_routes(app)
 
     return app
 
